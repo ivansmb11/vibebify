@@ -109,7 +109,7 @@ export function DuelCard({ duel, currentUserId, onAccept }: DuelCardProps) {
 
         {/* Opponent side */}
         {duel.status === "open" ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-6 gap-2">
+          <div className="flex-1 w-0 min-w-0 flex flex-col items-center justify-center py-6 gap-2">
             <span className="text-2xl">🎯</span>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
               Waiting for challenger
@@ -197,7 +197,7 @@ function SongSide({
     <button
       onClick={canVote ? onVote : undefined}
       className={`
-        flex-1 p-3 flex flex-col items-center gap-2 text-center transition-all
+        flex-1 w-0 min-w-0 p-3 flex flex-col items-center gap-2 text-center transition-all
         ${canVote ? "cursor-pointer hover:bg-card-hover" : "cursor-default"}
         ${isVoted ? `bg-${accentColor}/10` : ""}
       `}

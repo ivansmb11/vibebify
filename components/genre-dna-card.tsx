@@ -209,8 +209,8 @@ async function generateStoryImage(
   }
 
   // Pie chart
-  const totalCount = genres.reduce((sum, g) => sum + g.count, 0);
   const topGenres = genres.slice(0, 8);
+  const totalCount = topGenres.reduce((sum, g) => sum + g.count, 0);
   const chartCx = W / 2;
   const chartCy = y + 300;
   const outerR = 240;
@@ -336,8 +336,8 @@ export function GenreDnaCard({
   const [sharing, setSharing] = useState(false);
   const [animate, setAnimate] = useState(false);
 
-  const totalCount = genres.reduce((sum, g) => sum + g.count, 0);
   const topGenres = genres.slice(0, 8);
+  const totalCount = topGenres.reduce((sum, g) => sum + g.count, 0);
 
   useEffect(() => {
     const t = setTimeout(() => setAnimate(true), 100);

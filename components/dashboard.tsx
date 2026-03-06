@@ -62,6 +62,9 @@ export function Dashboard({ user }: DashboardProps) {
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
 
+  // DNA (stable medium_term data, independent of timeRange toggle)
+  const [dnaArtists, setDnaArtists] = useState<SpotifyArtist[]>([]);
+
   // Duels
   const [duels, setDuels] = useState<Duel[]>([]);
   const [duelsLoading, setDuelsLoading] = useState(true);
@@ -153,13 +156,24 @@ export function Dashboard({ user }: DashboardProps) {
     }
   }, []);
 
+  const fetchDnaData = useCallback(async () => {
+    try {
+      const res = await fetch("/api/spotify/top?type=artists&time_range=medium_term");
+      if (res.ok) {
+        const data = await res.json();
+        setDnaArtists(data.items ?? []);
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     fetchSpotifyData();
     fetchFeed();
     fetchDiscover();
     fetchStreak();
     fetchDuels();
-  }, [fetchSpotifyData, fetchFeed, fetchDiscover, fetchStreak, fetchDuels]);
+    fetchDnaData();
+  }, [fetchSpotifyData, fetchFeed, fetchDiscover, fetchStreak, fetchDuels, fetchDnaData]);
 
   const displayName =
     user.user_metadata?.full_name ?? user.user_metadata?.name ?? "You";
@@ -169,12 +183,13 @@ export function Dashboard({ user }: DashboardProps) {
   const uniqueGenres = [...new Set(allGenres)];
   const topGenre = uniqueGenres[0] ?? "eclectic";
 
-  // Genre counts for DNA card
-  const genreCounts = allGenres.reduce((acc: Record<string, number>, g) => {
+  // Genre counts for DNA card (uses stable medium_term data)
+  const dnaGenres = dnaArtists.flatMap((a) => a.genres);
+  const dnaGenreCounts = dnaGenres.reduce((acc: Record<string, number>, g) => {
     acc[g] = (acc[g] || 0) + 1;
     return acc;
   }, {});
-  const sortedGenres = Object.entries(genreCounts)
+  const sortedGenres = Object.entries(dnaGenreCounts)
     .sort(([, a], [, b]) => b - a)
     .map(([name, count]) => ({ name, count }));
 
@@ -595,7 +610,7 @@ export function Dashboard({ user }: DashboardProps) {
                           displayName={displayName}
                           avatarUrl={avatarUrl}
                           genres={sortedGenres}
-                          topArtists={topArtists.slice(0, 3).map((a) => a.name)}
+                          topArtists={dnaArtists.slice(0, 3).map((a) => a.name)}
                           streak={currentStreak}
                         />
                       ) : (
