@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireAuth, isError, validateId } from "@/lib/api";
 
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { id: rawId } = await params;
+  const id = validateId(rawId);
+  if (isError(id)) return id;
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { user, supabase, error: authError } = await requireAuth();
+  if (authError) return authError;
 
   const { error } = await supabase.from("likes").insert({
     user_id: user.id,
@@ -34,15 +31,12 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { id: rawId } = await params;
+  const id = validateId(rawId);
+  if (isError(id)) return id;
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { user, supabase, error: authError } = await requireAuth();
+  if (authError) return authError;
 
   const { error } = await supabase
     .from("likes")

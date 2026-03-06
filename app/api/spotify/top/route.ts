@@ -1,20 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import {
   getTopArtists,
   getTopTracks,
   refreshSpotifyToken,
 } from "@/lib/spotify";
+import { requireAuth, parseQuery, isError } from "@/lib/api";
+import { spotifyTopQuerySchema } from "@/lib/validations";
 
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, supabase, error: authError } = await requireAuth();
+  if (authError) return authError;
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const query = parseQuery(request, spotifyTopQuerySchema);
+  if (isError(query)) return query;
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -34,14 +32,10 @@ export async function GET(request: NextRequest) {
     refresh_token: string;
   };
 
-  const type = request.nextUrl.searchParams.get("type") ?? "artists";
-  const timeRange =
-    request.nextUrl.searchParams.get("time_range") ?? "medium_term";
-
-  const fetcher = type === "tracks" ? getTopTracks : getTopArtists;
+  const fetcher = query.type === "tracks" ? getTopTracks : getTopArtists;
 
   try {
-    const data = await fetcher(access_token, timeRange);
+    const data = await fetcher(access_token, query.time_range);
     return NextResponse.json(data);
   } catch (e: any) {
     if (e.message === "token_expired" && refresh_token) {
@@ -58,7 +52,7 @@ export async function GET(request: NextRequest) {
           })
           .eq("id", user.id);
 
-        const data = await fetcher(refreshed.access_token, timeRange);
+        const data = await fetcher(refreshed.access_token, query.time_range);
         return NextResponse.json(data);
       }
     }

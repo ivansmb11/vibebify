@@ -1,34 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireAuth, parseBody, isError, validateId } from "@/lib/api";
+import { acceptDuelSchema } from "@/lib/validations";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { id: rawId } = await params;
+  const id = validateId(rawId);
+  if (isError(id)) return id;
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { user, supabase, error: authError } = await requireAuth();
+  if (authError) return authError;
 
-  const body = await request.json();
-  const {
-    opponent_song_title,
-    opponent_song_artist,
-    opponent_song_image_url,
-    opponent_spotify_track_id,
-  } = body;
-
-  if (!opponent_song_title || !opponent_song_artist) {
-    return NextResponse.json(
-      { error: "Song title and artist are required" },
-      { status: 400 }
-    );
-  }
+  const body = await parseBody(request, acceptDuelSchema);
+  if (isError(body)) return body;
 
   // Verify the duel exists and is open
   const { data: duel } = await supabase
@@ -52,14 +38,23 @@ export async function POST(
     );
   }
 
+  // Upsert opponent song into catalog
+  const artistNames = body.opponent_song_artist.split(/,\s*/);
+  await supabase.rpc("upsert_song", {
+    p_title: body.opponent_song_title,
+    p_artist_names: artistNames,
+    p_image_url: body.opponent_song_image_url ?? null,
+    p_spotify_track_id: body.opponent_spotify_track_id ?? null,
+  });
+
   const { error } = await supabase
     .from("duels")
     .update({
       opponent_id: user.id,
-      opponent_song_title,
-      opponent_song_artist,
-      opponent_song_image_url,
-      opponent_spotify_track_id,
+      opponent_song_title: body.opponent_song_title,
+      opponent_song_artist: body.opponent_song_artist,
+      opponent_song_image_url: body.opponent_song_image_url,
+      opponent_spotify_track_id: body.opponent_spotify_track_id,
       status: "active",
       expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     })

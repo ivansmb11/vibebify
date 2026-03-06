@@ -1,25 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireAuth, parseQuery, isError } from "@/lib/api";
+import { searchQuerySchema } from "@/lib/validations";
 
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, supabase, error: authError } = await requireAuth();
+  if (authError) return authError;
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const q = request.nextUrl.searchParams.get("q");
-  if (!q || q.length < 2) {
-    return NextResponse.json([]);
-  }
+  const query = parseQuery(request, searchQuerySchema);
+  if (isError(query)) return query;
 
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select("id, display_name, avatar_url")
-    .ilike("display_name", `%${q}%`)
+    .ilike("display_name", `%${query.q}%`)
     .neq("id", user.id)
     .limit(20);
 

@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireAuth, parseBody, parseQuery, isError } from "@/lib/api";
+import { createDuelSchema } from "@/lib/validations";
+import { z } from "zod/v4";
 
-// GET - list active/open duels
+const duelsFilterSchema = z.object({
+  filter: z.enum(["open", "active", "mine", "all"]).default("active"),
+});
+
+// GET - list duels
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, supabase, error: authError } = await requireAuth();
+  if (authError) return authError;
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const query = parseQuery(request, duelsFilterSchema);
+  if (isError(query)) return query;
 
-  const filter = request.nextUrl.searchParams.get("filter") ?? "active";
-
-  let query = supabase
+  let dbQuery = supabase
     .from("duels")
     .select(
       `*,
@@ -24,17 +25,17 @@ export async function GET(request: NextRequest) {
     .order("created_at", { ascending: false })
     .limit(20);
 
-  if (filter === "open") {
-    query = query.eq("status", "open");
-  } else if (filter === "active") {
-    query = query.eq("status", "active");
-  } else if (filter === "mine") {
-    query = query.or(`creator_id.eq.${user.id},opponent_id.eq.${user.id}`);
+  if (query.filter === "open") {
+    dbQuery = dbQuery.eq("status", "open");
+  } else if (query.filter === "active") {
+    dbQuery = dbQuery.eq("status", "active");
+  } else if (query.filter === "mine") {
+    dbQuery = dbQuery.or(`creator_id.eq.${user.id},opponent_id.eq.${user.id}`);
   } else {
-    query = query.in("status", ["active", "open"]);
+    dbQuery = dbQuery.in("status", ["active", "open"]);
   }
 
-  const { data: duels, error } = await query;
+  const { data: duels, error } = await dbQuery;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -62,41 +63,35 @@ export async function GET(request: NextRequest) {
 
 // POST - create a new duel
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, supabase, error: authError } = await requireAuth();
+  if (authError) return authError;
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const body = await parseBody(request, createDuelSchema);
+  if (isError(body)) return body;
+
+  if (body.opponent_id === user.id) {
+    return NextResponse.json({ error: "Cannot duel yourself" }, { status: 400 });
   }
 
-  const body = await request.json();
-  const {
-    opponent_id,
-    creator_song_title,
-    creator_song_artist,
-    creator_song_image_url,
-    creator_spotify_track_id,
-  } = body;
-
-  if (!creator_song_title || !creator_song_artist) {
-    return NextResponse.json(
-      { error: "Song title and artist are required" },
-      { status: 400 }
-    );
-  }
+  // Upsert song into catalog
+  const artistNames = body.creator_song_artist.split(/,\s*/);
+  await supabase.rpc("upsert_song", {
+    p_title: body.creator_song_title,
+    p_artist_names: artistNames,
+    p_image_url: body.creator_song_image_url ?? null,
+    p_spotify_track_id: body.creator_spotify_track_id ?? null,
+  });
 
   const { data: duel, error } = await supabase
     .from("duels")
     .insert({
       creator_id: user.id,
-      opponent_id: opponent_id || null,
-      creator_song_title,
-      creator_song_artist,
-      creator_song_image_url,
-      creator_spotify_track_id,
-      status: opponent_id ? "open" : "open",
+      opponent_id: body.opponent_id || null,
+      creator_song_title: body.creator_song_title,
+      creator_song_artist: body.creator_song_artist,
+      creator_song_image_url: body.creator_song_image_url,
+      creator_spotify_track_id: body.creator_spotify_track_id,
+      status: "open",
     })
     .select(
       `*,

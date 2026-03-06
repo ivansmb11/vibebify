@@ -335,9 +335,16 @@ export function GenreDnaCard({
 }: GenreDnaCardProps) {
   const [sharing, setSharing] = useState(false);
   const [animate, setAnimate] = useState(false);
+  const [skippedGenres, setSkippedGenres] = useState<Set<string>>(new Set());
 
-  const topGenres = genres.slice(0, 8);
+  const filteredGenres = genres.filter((g) => !skippedGenres.has(g.name));
+  const topGenres = filteredGenres.slice(0, 8);
   const totalCount = topGenres.reduce((sum, g) => sum + g.count, 0);
+
+  const skipGenre = (name: string) => {
+    haptic("light");
+    setSkippedGenres((prev) => new Set(prev).add(name));
+  };
 
   useEffect(() => {
     const t = setTimeout(() => setAnimate(true), 100);
@@ -348,7 +355,7 @@ export function GenreDnaCard({
     haptic("success");
     setSharing(true);
     try {
-      const blob = await generateStoryImage(displayName, avatarUrl, genres, topArtists, streak);
+      const blob = await generateStoryImage(displayName, avatarUrl, filteredGenres, topArtists, streak);
       if (navigator.share && navigator.canShare({ files: [new File([blob], "dna.png")] })) {
         await navigator.share({
           title: "My Music DNA — Vibebify",
@@ -437,7 +444,7 @@ export function GenreDnaCard({
               return (
                 <span
                   key={genre.name}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 border text-[10px] font-bold uppercase tracking-wider transition-all duration-500"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 border text-[10px] font-bold uppercase tracking-wider transition-all duration-500 group"
                   style={{
                     borderColor: color + "40",
                     backgroundColor: color + "10",
@@ -449,9 +456,27 @@ export function GenreDnaCard({
                   <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
                   <span className="text-foreground/90">{genre.name}</span>
                   <span style={{ color }}>{pct}%</span>
+                  <button
+                    onClick={() => skipGenre(genre.name)}
+                    className="ml-0.5 opacity-40 hover:opacity-100 transition-opacity cursor-pointer text-foreground/60 hover:text-punk-pink"
+                    title={`Skip ${genre.name}`}
+                  >
+                    ×
+                  </button>
                 </span>
               );
             })}
+            {skippedGenres.size > 0 && (
+              <button
+                onClick={() => {
+                  haptic("light");
+                  setSkippedGenres(new Set());
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 border border-border text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              >
+                Reset
+              </button>
+            )}
           </div>
         </div>
       </div>

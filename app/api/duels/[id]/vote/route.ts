@@ -1,28 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireAuth, parseBody, isError, validateId } from "@/lib/api";
+import { voteDuelSchema } from "@/lib/validations";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { id: rawId } = await params;
+  const id = validateId(rawId);
+  if (isError(id)) return id;
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { user, supabase, error: authError } = await requireAuth();
+  if (authError) return authError;
 
-  const { voted_for } = await request.json();
-
-  if (!voted_for || !["creator", "opponent"].includes(voted_for)) {
-    return NextResponse.json(
-      { error: "voted_for must be 'creator' or 'opponent'" },
-      { status: 400 }
-    );
-  }
+  const body = await parseBody(request, voteDuelSchema);
+  if (isError(body)) return body;
 
   // Verify duel is active
   const { data: duel } = await supabase
@@ -41,7 +33,7 @@ export async function POST(
   const { error } = await supabase.from("duel_votes").insert({
     duel_id: id,
     user_id: user.id,
-    voted_for,
+    voted_for: body.voted_for,
   });
 
   if (error) {

@@ -1,25 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireAuth, parseBody, isError } from "@/lib/api";
+import { followSchema } from "@/lib/validations";
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, supabase, error: authError } = await requireAuth();
+  if (authError) return authError;
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const body = await parseBody(request, followSchema);
+  if (isError(body)) return body;
 
-  const { following_id } = await request.json();
-
-  if (!following_id || following_id === user.id) {
-    return NextResponse.json({ error: "Invalid user" }, { status: 400 });
+  if (body.following_id === user.id) {
+    return NextResponse.json({ error: "Cannot follow yourself" }, { status: 400 });
   }
 
   const { error } = await supabase.from("follows").insert({
     follower_id: user.id,
-    following_id,
+    following_id: body.following_id,
   });
 
   if (error) {
@@ -33,26 +29,17 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, supabase, error: authError } = await requireAuth();
+  if (authError) return authError;
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { following_id } = await request.json();
-
-  if (!following_id) {
-    return NextResponse.json({ error: "following_id is required" }, { status: 400 });
-  }
+  const body = await parseBody(request, followSchema);
+  if (isError(body)) return body;
 
   const { error } = await supabase
     .from("follows")
     .delete()
     .eq("follower_id", user.id)
-    .eq("following_id", following_id);
+    .eq("following_id", body.following_id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

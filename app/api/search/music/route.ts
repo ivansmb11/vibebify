@@ -1,24 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { searchRecordings } from "@/lib/musicbrainz";
+import { requireAuth, parseQuery, isError } from "@/lib/api";
+import { searchQuerySchema } from "@/lib/validations";
 
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { error: authError } = await requireAuth();
+  if (authError) return authError;
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const q = request.nextUrl.searchParams.get("q");
-  if (!q) {
-    return NextResponse.json({ error: "q is required" }, { status: 400 });
-  }
+  const query = parseQuery(request, searchQuerySchema);
+  if (isError(query)) return query;
 
   try {
-    const results = await searchRecordings(q);
+    const results = await searchRecordings(query.q);
 
     const tracks = results.recordings.map((r) => ({
       musicbrainz_id: r.id,
