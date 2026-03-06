@@ -179,7 +179,16 @@ export function Dashboard({ user }: DashboardProps) {
     .map(([name, count]) => ({ name, count }));
 
   const handleDuelCreated = (duel: Duel) => {
-    setDuels((prev) => [duel, ...prev]);
+    setDuels((prev) => {
+      // Replace existing duel if accepting, otherwise prepend
+      const idx = prev.findIndex((d) => d.id === duel.id);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = duel;
+        return updated;
+      }
+      return [duel, ...prev];
+    });
   };
 
   const handlePostCreated = (post: Post) => {
