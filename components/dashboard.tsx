@@ -11,6 +11,8 @@ import { TimeRangeTabs } from "./time-range-tabs";
 import { StatBadge } from "./stat-badge";
 import { PostCard, type Post } from "./post-card";
 import { ComposePost } from "./compose-post";
+import { UserSearch } from "./user-search";
+import { UserProfile } from "./user-profile";
 
 interface DashboardProps {
   user: User;
@@ -31,11 +33,11 @@ interface SpotifyArtist {
   id: string;
 }
 
-type MainTab = "feed" | "discover" | "stats";
+type MainTab = "feed" | "discover" | "search" | "stats" | "profile";
 type StatsTab = "recent" | "artists" | "tracks";
 
 export function Dashboard({ user, onSignOut }: DashboardProps) {
-  const [recentTracks, setRecentTracks] = useState<any[]>([]);
+  const [recentTracks, setRecentTracks] = useState<[]>([]);
   const [topArtists, setTopArtists] = useState<SpotifyArtist[]>([]);
   const [topTracks, setTopTracks] = useState<SpotifyTrack[]>([]);
   const [timeRange, setTimeRange] = useState("short_term");
@@ -48,16 +50,17 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
   const [discoverPosts, setDiscoverPosts] = useState<Post[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
   const [showCompose, setShowCompose] = useState(false);
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
 
   // Unique spotify tracks for compose picker (deduplicated)
   const uniqueRecentTracks = recentTracks.reduce(
-    (acc: SpotifyTrack[], item: any) => {
+    (acc: SpotifyTrack[], item: { track: SpotifyTrack }) => {
       if (!acc.find((t) => t.id === item.track.id)) {
         acc.push(item.track);
       }
       return acc;
     },
-    []
+    [],
   );
 
   const fetchSpotifyData = useCallback(async () => {
@@ -128,6 +131,11 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
   const handlePostCreated = (post: Post) => {
     setFeedPosts((prev) => [post, ...prev]);
     setDiscoverPosts((prev) => [post, ...prev]);
+  };
+
+  const navigateToProfile = (userId: string) => {
+    setViewingUserId(userId);
+    setMainTab("search");
   };
 
   const handlePostDeleted = (id: string) => {
@@ -240,6 +248,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                     post={post}
                     currentUserId={user.id}
                     onDelete={handlePostDeleted}
+                    onViewProfile={navigateToProfile}
                   />
                 ))
               )}
@@ -272,10 +281,26 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                   post={post}
                   currentUserId={user.id}
                   onDelete={handlePostDeleted}
+                  onViewProfile={navigateToProfile}
                 />
               ))
             )}
           </section>
+        )}
+
+        {/* Search tab */}
+        {mainTab === "search" && !viewingUserId && (
+          <UserSearch onSelectUser={(id) => setViewingUserId(id)} />
+        )}
+
+        {/* User profile overlay */}
+        {mainTab === "search" && viewingUserId && (
+          <UserProfile
+            userId={viewingUserId}
+            currentUserId={user.id}
+            onBack={() => setViewingUserId(null)}
+            onViewProfile={(id) => setViewingUserId(id)}
+          />
         )}
 
         {/* Stats tab */}
@@ -342,17 +367,22 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                         accent="bg-punk-cyan"
                       />
                       <div className="flex flex-col gap-0.5">
-                        {recentTracks.map((item: any) => (
-                          <TrackCard
-                            key={`${item.track.id}-${item.played_at}`}
-                            name={item.track.name}
-                            artist={item.track.artists
-                              .map((a: any) => a.name)
-                              .join(", ")}
-                            imageUrl={item.track.album.images?.[2]?.url}
-                            playedAt={item.played_at}
-                          />
-                        ))}
+                        {recentTracks.map(
+                          (item: {
+                            track: SpotifyTrack;
+                            played_at: string;
+                          }) => (
+                            <TrackCard
+                              key={`${item.track.id}-${item.played_at}`}
+                              name={item.track.name}
+                              artist={item.track.artists
+                                .map((a: { name: string }) => a.name)
+                                .join(", ")}
+                              imageUrl={item.track.album.images?.[2]?.url}
+                              playedAt={item.played_at}
+                            />
+                          ),
+                        )}
                         {recentTracks.length === 0 && (
                           <EmptyState message="No recent tracks found." />
                         )}
@@ -422,7 +452,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                               rank={i + 1}
                               name={track.name}
                               artist={track.artists
-                                .map((a: any) => a.name)
+                                .map((a: { name: string }) => a.name)
                                 .join(", ")}
                               imageUrl={track.album.images?.[2]?.url}
                             />
@@ -438,6 +468,16 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
               )}
             </div>
           </>
+        )}
+
+        {/* Profile tab (own profile) */}
+        {mainTab === "profile" && (
+          <UserProfile
+            userId={user.id}
+            currentUserId={user.id}
+            onBack={() => setMainTab("feed")}
+            onViewProfile={navigateToProfile}
+          />
         )}
       </main>
 
@@ -466,6 +506,15 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
             </button>
           </div>
           <BottomTab
+            icon="🔍"
+            label="Search"
+            active={mainTab === "search"}
+            onClick={() => {
+              setMainTab("search");
+              setViewingUserId(null);
+            }}
+          />
+          <BottomTab
             icon="📊"
             label="Stats"
             active={mainTab === "stats"}
@@ -474,8 +523,8 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
           <BottomTab
             icon="👤"
             label="Profile"
-            active={false}
-            onClick={() => {}}
+            active={mainTab === "profile"}
+            onClick={() => setMainTab("profile")}
           />
         </div>
       </nav>

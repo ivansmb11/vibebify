@@ -31,9 +31,10 @@ interface PostCardProps {
   post: Post;
   currentUserId: string;
   onDelete?: (id: string) => void;
+  onViewProfile?: (userId: string) => void;
 }
 
-export function PostCard({ post, currentUserId, onDelete }: PostCardProps) {
+export function PostCard({ post, currentUserId, onDelete, onViewProfile }: PostCardProps) {
   const [liked, setLiked] = useState(post.liked_by_user);
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [commentsCount, setCommentsCount] = useState(post.comments_count);
@@ -67,23 +68,28 @@ export function PostCard({ post, currentUserId, onDelete }: PostCardProps) {
     <article className="border-b border-border px-4 py-4">
       {/* Header */}
       <div className="flex items-center gap-3 mb-3">
-        {post.profiles.avatar_url ? (
-          <img
-            src={post.profiles.avatar_url}
-            alt=""
-            className="w-8 h-8 rounded-full border border-border"
-          />
-        ) : (
-          <div className="w-8 h-8 rounded-full bg-punk-purple flex items-center justify-center text-xs font-bold">
-            {post.profiles.display_name?.charAt(0) ?? "?"}
+        <button
+          onClick={() => onViewProfile?.(post.user_id)}
+          className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer text-left"
+        >
+          {post.profiles.avatar_url ? (
+            <img
+              src={post.profiles.avatar_url}
+              alt=""
+              className="w-8 h-8 rounded-full border border-border shrink-0"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-punk-purple flex items-center justify-center text-xs font-bold shrink-0">
+              {post.profiles.display_name?.charAt(0) ?? "?"}
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold truncate hover:text-punk-cyan transition-colors">
+              {post.profiles.display_name}
+            </p>
+            <p className="text-[10px] text-muted-foreground">{timeAgo}</p>
           </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold truncate">
-            {post.profiles.display_name}
-          </p>
-          <p className="text-[10px] text-muted-foreground">{timeAgo}</p>
-        </div>
+        </button>
         {isOwn && (
           <Button
             onPress={handleDelete}

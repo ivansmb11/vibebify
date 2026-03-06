@@ -44,6 +44,10 @@ export async function DELETE(request: NextRequest) {
 
   const { following_id } = await request.json();
 
+  if (!following_id) {
+    return NextResponse.json({ error: "following_id is required" }, { status: 400 });
+  }
+
   const { error } = await supabase
     .from("follows")
     .delete()
