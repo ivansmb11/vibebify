@@ -52,7 +52,7 @@ export async function POST(
     );
   }
 
-  const { data: updated, error } = await supabase
+  const { error } = await supabase
     .from("duels")
     .update({
       opponent_id: user.id,
@@ -63,17 +63,21 @@ export async function POST(
       status: "active",
       expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     })
-    .eq("id", id)
+    .eq("id", id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const { data: updated } = await supabase
+    .from("duels")
     .select(
       `*,
       creator:profiles!duels_creator_id_fkey(id, display_name, avatar_url),
       opponent:profiles!duels_opponent_id_fkey(id, display_name, avatar_url)`
     )
+    .eq("id", id)
     .single();
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
 
   return NextResponse.json(updated);
 }
