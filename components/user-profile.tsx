@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "react-aria-components";
+import { haptic } from "@/lib/haptics";
 import { PostCard, type Post } from "./post-card";
 import { StatBadge } from "./stat-badge";
 
@@ -57,6 +58,7 @@ export function UserProfile({
 
   const toggleFollow = async () => {
     if (!profile || followLoading) return;
+    haptic(profile.is_following ? "light" : "success");
     setFollowLoading(true);
 
     const method = profile.is_following ? "DELETE" : "POST";

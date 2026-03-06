@@ -13,7 +13,7 @@ export async function GET(
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("id, display_name, avatar_url, created_at")
+    .select("id, display_name, avatar_url, created_at, current_streak, longest_streak")
     .eq("id", id)
     .single();
 

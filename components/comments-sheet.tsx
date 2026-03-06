@@ -10,6 +10,7 @@ import {
   Input,
   Button,
 } from "react-aria-components";
+import { haptic } from "@/lib/haptics";
 
 interface Comment {
   id: string;
@@ -49,6 +50,7 @@ export function CommentsSheet({
 
   const submitComment = async () => {
     if (!newComment.trim() || submitting) return;
+    haptic("medium");
     setSubmitting(true);
 
     const res = await fetch(`/api/posts/${postId}/comments`, {

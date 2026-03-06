@@ -10,6 +10,7 @@ import {
   TextArea,
   Button,
 } from "react-aria-components";
+import { haptic } from "@/lib/haptics";
 import type { Post } from "./post-card";
 
 interface SongResult {
@@ -74,6 +75,7 @@ export function ComposePost({
   }, []);
 
   const selectSpotifyTrack = (track: SpotifyTrack) => {
+    haptic("light");
     setSelectedSong({
       title: track.name,
       artist: track.artists.map((a) => a.name).join(", "),
@@ -84,6 +86,7 @@ export function ComposePost({
   };
 
   const selectMBResult = (result: SongResult) => {
+    haptic("light");
     setSelectedSong({
       title: result.title,
       artist: result.artist,
@@ -96,6 +99,7 @@ export function ComposePost({
 
   const submit = async () => {
     if (!content.trim() || !selectedSong || submitting) return;
+    haptic("medium");
     setSubmitting(true);
 
     const res = await fetch("/api/posts", {

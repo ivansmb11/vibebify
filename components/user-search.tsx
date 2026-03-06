@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { TextField, Input, Button } from "react-aria-components";
+import { haptic } from "@/lib/haptics";
 
 interface UserResult {
   id: string;
@@ -45,6 +46,7 @@ export function UserSearch({ onSelectUser }: UserSearchProps) {
   }, []);
 
   const toggleFollow = async (userId: string, isFollowing: boolean) => {
+    haptic(isFollowing ? "light" : "success");
     setFollowLoading(userId);
     const method = isFollowing ? "DELETE" : "POST";
     const res = await fetch("/api/follow", {

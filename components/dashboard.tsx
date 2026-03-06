@@ -13,6 +13,11 @@ import { PostCard, type Post } from "./post-card";
 import { ComposePost } from "./compose-post";
 import { UserSearch } from "./user-search";
 import { UserProfile } from "./user-profile";
+import { haptic } from "@/lib/haptics";
+import { StreakBadge } from "./streak-badge";
+import { GenreDnaCard } from "./genre-dna-card";
+import { DuelCard, type Duel } from "./duel-card";
+import { CreateDuel } from "./create-duel";
 
 interface DashboardProps {
   user: User;
@@ -33,8 +38,8 @@ interface SpotifyArtist {
   id: string;
 }
 
-type MainTab = "feed" | "discover" | "search" | "stats" | "profile";
-type StatsTab = "recent" | "artists" | "tracks";
+type MainTab = "feed" | "discover" | "search" | "duels" | "stats" | "profile";
+type StatsTab = "recent" | "artists" | "tracks" | "dna";
 
 export function Dashboard({ user, onSignOut }: DashboardProps) {
   const [recentTracks, setRecentTracks] = useState<[]>([]);
@@ -51,6 +56,16 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
   const [feedLoading, setFeedLoading] = useState(true);
   const [showCompose, setShowCompose] = useState(false);
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
+
+  // Streaks
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [longestStreak, setLongestStreak] = useState(0);
+
+  // Duels
+  const [duels, setDuels] = useState<Duel[]>([]);
+  const [duelsLoading, setDuelsLoading] = useState(true);
+  const [showCreateDuel, setShowCreateDuel] = useState(false);
+  const [acceptingDuelId, setAcceptingDuelId] = useState<string | null>(null);
 
   // Unique spotify tracks for compose picker (deduplicated)
   const uniqueRecentTracks = recentTracks.reduce(
@@ -114,11 +129,36 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
     } catch {}
   }, []);
 
+  const fetchStreak = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/users/${user.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentStreak(data.current_streak ?? 0);
+        setLongestStreak(data.longest_streak ?? 0);
+      }
+    } catch {}
+  }, [user.id]);
+
+  const fetchDuels = useCallback(async () => {
+    setDuelsLoading(true);
+    try {
+      const res = await fetch("/api/duels?filter=all");
+      if (res.ok) {
+        setDuels(await res.json());
+      }
+    } finally {
+      setDuelsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchSpotifyData();
     fetchFeed();
     fetchDiscover();
-  }, [fetchSpotifyData, fetchFeed, fetchDiscover]);
+    fetchStreak();
+    fetchDuels();
+  }, [fetchSpotifyData, fetchFeed, fetchDiscover, fetchStreak, fetchDuels]);
 
   const displayName =
     user.user_metadata?.full_name ?? user.user_metadata?.name ?? "You";
@@ -127,6 +167,22 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
   const allGenres = topArtists.flatMap((a) => a.genres);
   const uniqueGenres = [...new Set(allGenres)];
   const topGenre = uniqueGenres[0] ?? "eclectic";
+
+  // Genre counts for DNA card
+  const genreCounts = allGenres.reduce(
+    (acc: Record<string, number>, g) => {
+      acc[g] = (acc[g] || 0) + 1;
+      return acc;
+    },
+    {},
+  );
+  const sortedGenres = Object.entries(genreCounts)
+    .sort(([, a], [, b]) => b - a)
+    .map(([name, count]) => ({ name, count }));
+
+  const handleDuelCreated = (duel: Duel) => {
+    setDuels((prev) => [duel, ...prev]);
+  };
 
   const handlePostCreated = (post: Post) => {
     setFeedPosts((prev) => [post, ...prev]);
@@ -148,21 +204,56 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="flex items-center justify-between px-4 py-3 max-w-lg mx-auto">
-          <h1 className="font-[family-name:var(--font-display)] text-lg font-bold tracking-tighter">
+          <h1
+            className="font-display text-lg font-bold tracking-tighter cursor-pointer"
+            onClick={() => {
+              haptic("light");
+              setMainTab("feed");
+            }}
+          >
             VIBE<span className="text-punk-pink">BIFY</span>
           </h1>
 
-          <div className="flex items-center gap-3">
-            {avatarUrl && (
-              <img
-                src={avatarUrl}
-                alt={displayName}
-                className="w-7 h-7 rounded-full border border-border"
-              />
-            )}
-            <PunkButton variant="ghost" size="sm" onPress={onSignOut}>
-              Exit
-            </PunkButton>
+          <div className="flex items-center gap-2">
+            {/* Search button */}
+            <button
+              onClick={() => {
+                haptic("light");
+                setMainTab("search");
+                setViewingUserId(null);
+              }}
+              className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
+                mainTab === "search"
+                  ? "bg-punk-pink/20 text-punk-pink"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              aria-label="Search users"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </button>
+
+            {/* Profile avatar */}
+            <button
+              onClick={() => {
+                haptic("light");
+                setMainTab("profile");
+              }}
+              className={`w-8 h-8 rounded-full border-2 transition-colors cursor-pointer overflow-hidden ${
+                mainTab === "profile" ? "border-punk-pink" : "border-border hover:border-muted-foreground"
+              }`}
+              aria-label="Your profile"
+            >
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-punk-purple flex items-center justify-center text-[10px] font-bold">
+                  {displayName.charAt(0)}
+                </div>
+              )}
+            </button>
           </div>
         </div>
       </header>
@@ -192,10 +283,11 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                   <p className="text-xs text-muted-foreground uppercase tracking-[0.2em]">
                     Your feed
                   </p>
-                  <h2 className="font-[family-name:var(--font-display)] text-xl font-bold tracking-tight">
+                  <h2 className="font-display text-xl font-bold tracking-tight">
                     {displayName}
                   </h2>
                 </div>
+                {currentStreak > 0 && <StreakBadge currentStreak={currentStreak} longestStreak={longestStreak} />}
               </div>
 
               {/* Compose CTA */}
@@ -330,7 +422,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
             {/* Stats sub-tabs */}
             <nav className="border-b border-border">
               <div className="flex max-w-lg mx-auto">
-                {(["recent", "artists", "tracks"] as const).map((tab) => (
+                {(["recent", "artists", "tracks", "dna"] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setStatsTab(tab)}
@@ -347,8 +439,10 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                     {tab === "recent"
                       ? "Recent"
                       : tab === "artists"
-                        ? "Top Artists"
-                        : "Top Tracks"}
+                        ? "Artists"
+                        : tab === "tracks"
+                          ? "Tracks"
+                          : "DNA"}
                   </button>
                 ))}
               </div>
@@ -464,10 +558,75 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                       </TimeRangeTabs>
                     </section>
                   )}
+
+                  {statsTab === "dna" && (
+                    <section>
+                      {sortedGenres.length > 0 ? (
+                        <GenreDnaCard
+                          displayName={displayName}
+                          avatarUrl={avatarUrl}
+                          genres={sortedGenres}
+                          topArtist={topArtists[0]?.name}
+                          streak={currentStreak}
+                        />
+                      ) : (
+                        <EmptyState message="Listen to more music to build your DNA profile." />
+                      )}
+                    </section>
+                  )}
                 </>
               )}
             </div>
           </>
+        )}
+
+        {/* Duels tab */}
+        {mainTab === "duels" && (
+          <section>
+            <div className="px-4 pt-5 pb-3 flex items-center justify-between">
+              <SectionHeader
+                title="Song Duels"
+                subtitle="Pick your weapon"
+                accent="bg-punk-orange"
+              />
+              <PunkButton
+                variant="primary"
+                size="sm"
+                onPress={() => {
+                  haptic("medium");
+                  setAcceptingDuelId(null);
+                  setShowCreateDuel(true);
+                }}
+              >
+                New Duel
+              </PunkButton>
+            </div>
+
+            {duelsLoading ? (
+              <LoadingSpinner label="Loading duels..." />
+            ) : duels.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3 px-4">
+                <span className="text-4xl">🎯</span>
+                <p className="text-sm text-muted-foreground text-center">
+                  No duels yet. Start a song battle!
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3 px-4 pb-4">
+                {duels.map((duel) => (
+                  <DuelCard
+                    key={duel.id}
+                    duel={duel}
+                    currentUserId={user.id}
+                    onAccept={(duelId) => {
+                      setAcceptingDuelId(duelId);
+                      setShowCreateDuel(true);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
         )}
 
         {/* Profile tab (own profile) */}
@@ -488,43 +647,49 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
             icon="⚡"
             label="Feed"
             active={mainTab === "feed"}
-            onClick={() => setMainTab("feed")}
+            onClick={() => {
+              haptic("light");
+              setMainTab("feed");
+            }}
           />
           <BottomTab
             icon="🌍"
             label="Discover"
             active={mainTab === "discover"}
-            onClick={() => setMainTab("discover")}
+            onClick={() => {
+              haptic("light");
+              setMainTab("discover");
+            }}
           />
           {/* Center compose button */}
           <div className="flex items-center justify-center px-2">
             <button
-              onClick={() => setShowCompose(true)}
+              onClick={() => {
+                haptic("medium");
+                setShowCompose(true);
+              }}
               className="w-12 h-12 bg-punk-pink text-white flex items-center justify-center text-2xl font-bold -skew-x-3 hover:bg-punk-pink/80 transition-colors cursor-pointer -translate-y-3 shadow-[4px_4px_0px_0px_rgba(255,45,123,0.3)]"
             >
               <span className="skew-x-3">+</span>
             </button>
           </div>
           <BottomTab
-            icon="🔍"
-            label="Search"
-            active={mainTab === "search"}
+            icon="🎯"
+            label="Duels"
+            active={mainTab === "duels"}
             onClick={() => {
-              setMainTab("search");
-              setViewingUserId(null);
+              haptic("light");
+              setMainTab("duels");
             }}
           />
           <BottomTab
             icon="📊"
             label="Stats"
             active={mainTab === "stats"}
-            onClick={() => setMainTab("stats")}
-          />
-          <BottomTab
-            icon="👤"
-            label="Profile"
-            active={mainTab === "profile"}
-            onClick={() => setMainTab("profile")}
+            onClick={() => {
+              haptic("light");
+              setMainTab("stats");
+            }}
           />
         </div>
       </nav>
@@ -533,8 +698,23 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
       <ComposePost
         isOpen={showCompose}
         onClose={() => setShowCompose(false)}
-        onPostCreated={handlePostCreated}
+        onPostCreated={(post) => {
+          handlePostCreated(post);
+          fetchStreak();
+        }}
         recentTracks={uniqueRecentTracks}
+      />
+
+      {/* Create/Accept Duel modal */}
+      <CreateDuel
+        isOpen={showCreateDuel}
+        onClose={() => {
+          setShowCreateDuel(false);
+          setAcceptingDuelId(null);
+        }}
+        onCreated={handleDuelCreated}
+        recentTracks={uniqueRecentTracks}
+        acceptingDuelId={acceptingDuelId}
       />
     </div>
   );

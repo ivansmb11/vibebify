@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "react-aria-components";
 import { CommentsSheet } from "./comments-sheet";
+import { haptic } from "@/lib/haptics";
 
 interface PostProfile {
   id: string;
@@ -45,6 +46,7 @@ export function PostCard({ post, currentUserId, onDelete, onViewProfile }: PostC
 
   const toggleLike = async () => {
     if (likeLoading) return;
+    haptic(liked ? "light" : "success");
     setLikeLoading(true);
 
     const method = liked ? "DELETE" : "POST";
