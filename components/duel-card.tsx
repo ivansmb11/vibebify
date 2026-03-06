@@ -99,6 +99,7 @@ export function DuelCard({ duel, currentUserId, onAccept }: DuelCardProps) {
           isVoted={userVote === "creator"}
           canVote={canVote}
           onVote={() => vote("creator")}
+          totalVotes={totalVotes}
           side="left"
         />
 
@@ -140,6 +141,7 @@ export function DuelCard({ duel, currentUserId, onAccept }: DuelCardProps) {
             isVoted={userVote === "opponent"}
             canVote={canVote}
             onVote={() => vote("opponent")}
+            totalVotes={totalVotes}
             side="right"
           />
         )}
@@ -175,6 +177,7 @@ function SongSide({
   isVoted,
   canVote,
   onVote,
+  totalVotes,
   side,
 }: {
   profile: { id: string; display_name: string; avatar_url: string | null };
@@ -189,6 +192,7 @@ function SongSide({
   isVoted: boolean;
   canVote: boolean;
   onVote: () => void;
+  totalVotes: number;
   side: "left" | "right";
 }) {
   const accentColor = side === "left" ? "punk-cyan" : "punk-pink";
@@ -218,13 +222,18 @@ function SongSide({
       </div>
 
       {/* Song */}
-      {songImage ? (
-        <img src={songImage} alt="" className="w-14 h-14 object-cover" />
-      ) : (
-        <div className="w-14 h-14 bg-border flex items-center justify-center text-xl text-muted-foreground">
-          ♪
-        </div>
-      )}
+      <div className="relative">
+        {songImage ? (
+          <img src={songImage} alt="" className="w-14 h-14 object-cover" />
+        ) : (
+          <div className="w-14 h-14 bg-border flex items-center justify-center text-xl text-muted-foreground">
+            ♪
+          </div>
+        )}
+        {showResults && isWinning && totalVotes > 0 && (
+          <span className="absolute -top-3 -right-3 text-lg rotate-[25deg] drop-shadow-md">👑</span>
+        )}
+      </div>
       <div className="min-w-0 w-full">
         <p className="text-xs font-bold truncate">{songTitle}</p>
         <p className="text-[10px] text-muted-foreground truncate">{songArtist}</p>
