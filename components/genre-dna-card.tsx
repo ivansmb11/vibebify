@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "react-aria-components";
 import { haptic } from "@/lib/haptics";
 
@@ -8,7 +8,7 @@ interface GenreDnaCardProps {
   displayName: string;
   avatarUrl?: string;
   genres: { name: string; count: number }[];
-  topArtist?: string;
+  topArtists?: string[];
   streak?: number;
 }
 
@@ -47,7 +47,8 @@ function getGenreColor(genre: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
-// Instagram story: 1080x1920
+// ─── Story image generation (1080x1920) ───
+
 const W = 1080;
 const H = 1920;
 
@@ -61,28 +62,79 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-function drawRoundedRect(
+function drawPieChart(
   ctx: CanvasRenderingContext2D,
-  x: number, y: number, w: number, h: number, r: number,
+  cx: number, cy: number,
+  outerR: number, innerR: number,
+  genres: { name: string; count: number }[],
+  totalCount: number,
+) {
+  let startAngle = -Math.PI / 2;
+  for (let i = 0; i < genres.length; i++) {
+    const genre = genres[i];
+    const sliceAngle = (genre.count / totalCount) * Math.PI * 2;
+    const color = getGenreColor(genre.name);
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, outerR, startAngle, startAngle + sliceAngle);
+    ctx.arc(cx, cy, innerR, startAngle + sliceAngle, startAngle, true);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 1 - i * 0.03;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "#0a0a0a";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    startAngle += sliceAngle;
+  }
+}
+
+async function drawAvatarCenter(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number, radius: number,
+  avatarUrl: string | undefined, displayName: string,
 ) {
   ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
+  ctx.arc(cx, cy, radius + 6, 0, Math.PI * 2);
+  ctx.fillStyle = "#0a0a0a";
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius + 4, 0, Math.PI * 2);
+  ctx.strokeStyle = "#ff2d7b";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  if (avatarUrl) {
+    try {
+      const img = await loadImage(avatarUrl);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(img, cx - radius, cy - radius, radius * 2, radius * 2);
+      ctx.restore();
+      return;
+    } catch { /* fallback */ }
+  }
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fillStyle = "#b44dff";
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 80px system-ui, -apple-system, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(displayName.charAt(0), cx, cy);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
 }
 
 async function generateStoryImage(
   displayName: string,
   avatarUrl: string | undefined,
   genres: { name: string; count: number }[],
-  topArtist: string | undefined,
+  topArtists: string[],
   streak: number | undefined,
 ): Promise<Blob> {
   const canvas = document.createElement("canvas");
@@ -90,31 +142,24 @@ async function generateStoryImage(
   canvas.height = H;
   const ctx = canvas.getContext("2d")!;
 
-  // Background — dark with noise-like grain
   ctx.fillStyle = "#0a0a0a";
   ctx.fillRect(0, 0, W, H);
 
-  // Decorative glow blobs
-  const gradient1 = ctx.createRadialGradient(W * 0.8, H * 0.15, 0, W * 0.8, H * 0.15, 400);
-  gradient1.addColorStop(0, "rgba(255, 45, 123, 0.15)");
-  gradient1.addColorStop(1, "rgba(255, 45, 123, 0)");
-  ctx.fillStyle = gradient1;
-  ctx.fillRect(0, 0, W, H);
+  // Glow blobs
+  for (const [bx, by, br, bc] of [
+    [W * 0.8, H * 0.12, 400, "rgba(255,45,123,0.15)"],
+    [W * 0.15, H * 0.55, 350, "rgba(0,240,255,0.10)"],
+    [W * 0.5, H * 0.85, 400, "rgba(180,77,255,0.08)"],
+  ] as [number, number, number, string][]) {
+    const g = ctx.createRadialGradient(bx, by, 0, bx, by, br);
+    g.addColorStop(0, bc);
+    g.addColorStop(1, "transparent");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
 
-  const gradient2 = ctx.createRadialGradient(W * 0.2, H * 0.85, 0, W * 0.2, H * 0.85, 400);
-  gradient2.addColorStop(0, "rgba(0, 240, 255, 0.12)");
-  gradient2.addColorStop(1, "rgba(0, 240, 255, 0)");
-  ctx.fillStyle = gradient2;
-  ctx.fillRect(0, 0, W, H);
-
-  const gradient3 = ctx.createRadialGradient(W * 0.5, H * 0.5, 0, W * 0.5, H * 0.5, 500);
-  gradient3.addColorStop(0, "rgba(180, 77, 255, 0.08)");
-  gradient3.addColorStop(1, "rgba(180, 77, 255, 0)");
-  ctx.fillStyle = gradient3;
-  ctx.fillRect(0, 0, W, H);
-
-  // Subtle diagonal lines pattern
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.02)";
+  // Diagonal lines
+  ctx.strokeStyle = "rgba(255,255,255,0.02)";
   ctx.lineWidth = 1;
   for (let i = -H; i < W + H; i += 40) {
     ctx.beginPath();
@@ -126,7 +171,7 @@ async function generateStoryImage(
   const pad = 80;
   let y = 120;
 
-  // ── VIBEBIFY Logo ──
+  // Logo
   ctx.save();
   ctx.font = "bold 72px system-ui, -apple-system, sans-serif";
   ctx.letterSpacing = "-2px";
@@ -137,107 +182,46 @@ async function generateStoryImage(
   ctx.fillText("BIFY", pad + vibeW, y);
   ctx.restore();
 
-  // Accent bar under logo
   ctx.fillStyle = "#ff2d7b";
   y += 16;
   ctx.save();
-  ctx.transform(1, 0, -0.15, 1, 0, 0); // skew
+  ctx.transform(1, 0, -0.15, 1, 0, 0);
   ctx.fillRect(pad, y, 160, 6);
   ctx.restore();
 
-  y += 80;
-
-  // ── Avatar + Name ──
-  const avatarSize = 100;
-  if (avatarUrl) {
-    try {
-      const img = await loadImage(avatarUrl);
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(pad + avatarSize / 2, y + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(img, pad, y, avatarSize, avatarSize);
-      ctx.restore();
-      // Border
-      ctx.strokeStyle = "#ff2d7b";
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(pad + avatarSize / 2, y + avatarSize / 2, avatarSize / 2 + 2, 0, Math.PI * 2);
-      ctx.stroke();
-    } catch {
-      // fallback circle
-      ctx.fillStyle = "#b44dff";
-      ctx.beginPath();
-      ctx.arc(pad + avatarSize / 2, y + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 48px system-ui, -apple-system, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(displayName.charAt(0), pad + avatarSize / 2, y + avatarSize / 2 + 16);
-      ctx.textAlign = "left";
-    }
-  } else {
-    ctx.fillStyle = "#b44dff";
-    ctx.beginPath();
-    ctx.arc(pad + avatarSize / 2, y + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 48px system-ui, -apple-system, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(displayName.charAt(0), pad + avatarSize / 2, y + avatarSize / 2 + 16);
-    ctx.textAlign = "left";
-  }
-
-  // Name next to avatar
+  y += 60;
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 52px system-ui, -apple-system, sans-serif";
-  ctx.fillText(displayName, pad + avatarSize + 28, y + 45);
-
-  // "Music DNA" label
+  ctx.fillText(displayName, pad, y);
+  y += 36;
   ctx.fillStyle = "rgba(255,255,255,0.4)";
   ctx.font = "bold 22px system-ui, -apple-system, sans-serif";
   ctx.letterSpacing = "6px";
-  ctx.fillText("MUSIC DNA", pad + avatarSize + 28, y + 80);
+  ctx.fillText("MUSIC DNA", pad, y);
   ctx.letterSpacing = "0px";
 
-  // Streak badge
   if (streak && streak > 0) {
-    const streakX = W - pad - 120;
     ctx.fillStyle = streak >= 30 ? "#b44dff" : streak >= 7 ? "#00f0ff" : "#ff6b2b";
     ctx.font = "bold 40px system-ui, -apple-system, sans-serif";
     ctx.textAlign = "right";
-    ctx.fillText(`🔥 ${streak}`, streakX + 120, y + 55);
+    ctx.fillText(`🔥 ${streak}`, W - pad, 120);
     ctx.textAlign = "left";
   }
 
-  y += avatarSize + 70;
-
-  // ── DNA Bar visualization ──
+  // Pie chart
   const totalCount = genres.reduce((sum, g) => sum + g.count, 0);
   const topGenres = genres.slice(0, 8);
+  const chartCx = W / 2;
+  const chartCy = y + 300;
+  const outerR = 240;
+  const innerR = 130;
 
-  const barH = 60;
-  const barGap = 6;
-  let barX = pad;
-  const barW = W - pad * 2;
+  drawPieChart(ctx, chartCx, chartCy, outerR, innerR, topGenres, totalCount);
+  await drawAvatarCenter(ctx, chartCx, chartCy, innerR - 12, avatarUrl, displayName);
 
-  for (let i = 0; i < topGenres.length; i++) {
-    const genre = topGenres[i];
-    const pct = genre.count / totalCount;
-    const segW = Math.max(pct * barW, barW * 0.04);
-    const color = getGenreColor(genre.name);
+  y = chartCy + outerR + 60;
 
-    ctx.fillStyle = color;
-    ctx.globalAlpha = 1 - i * 0.04;
-    ctx.fillRect(barX, y, segW - barGap, barH);
-    ctx.globalAlpha = 1;
-    barX += segW;
-  }
-
-  y += barH + 50;
-
-  // ── Genre breakdown ──
+  // Genre legend
   ctx.fillStyle = "rgba(255,255,255,0.35)";
   ctx.font = "bold 20px system-ui, -apple-system, sans-serif";
   ctx.letterSpacing = "5px";
@@ -250,26 +234,22 @@ async function generateStoryImage(
     const pct = Math.round((genre.count / totalCount) * 100);
     const color = getGenreColor(genre.name);
 
-    // Color swatch (skewed parallelogram)
     ctx.save();
     ctx.transform(1, 0, -0.2, 1, 0, 0);
     ctx.fillStyle = color;
     ctx.fillRect(pad + 10, y - 22, 20, 28);
     ctx.restore();
 
-    // Genre name
     ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.font = "bold 34px system-ui, -apple-system, sans-serif";
+    ctx.font = "bold 32px system-ui, -apple-system, sans-serif";
     ctx.fillText(genre.name.toUpperCase(), pad + 50, y);
 
-    // Percentage
     ctx.fillStyle = color;
-    ctx.font = "bold 34px system-ui, -apple-system, sans-serif";
+    ctx.font = "bold 32px system-ui, -apple-system, sans-serif";
     ctx.textAlign = "right";
     ctx.fillText(`${pct}%`, W - pad, y);
     ctx.textAlign = "left";
 
-    // Subtle bar behind
     const rowBarW = W - pad * 2 - 50;
     ctx.fillStyle = "rgba(255,255,255,0.04)";
     ctx.fillRect(pad + 50, y + 10, rowBarW, 4);
@@ -278,14 +258,13 @@ async function generateStoryImage(
     ctx.fillRect(pad + 50, y + 10, rowBarW * (pct / 100), 4);
     ctx.globalAlpha = 1;
 
-    y += 66;
+    y += 58;
   }
 
   y += 20;
 
-  // ── Top Artist ──
-  if (topArtist) {
-    // Divider line
+  // Top 3 artists
+  if (topArtists.length > 0) {
     ctx.strokeStyle = "rgba(255,255,255,0.1)";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -297,19 +276,24 @@ async function generateStoryImage(
     ctx.fillStyle = "rgba(255,255,255,0.35)";
     ctx.font = "bold 20px system-ui, -apple-system, sans-serif";
     ctx.letterSpacing = "5px";
-    ctx.fillText("#1 ARTIST", pad, y);
+    ctx.fillText("TOP ARTISTS", pad, y);
     ctx.letterSpacing = "0px";
     y += 48;
 
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 48px system-ui, -apple-system, sans-serif";
-    ctx.fillText(topArtist, pad, y);
+    const medals = ["🥇", "🥈", "🥉"];
+    const artistColors = ["#ff2d7b", "#00f0ff", "#f5e642"];
+    for (let i = 0; i < Math.min(topArtists.length, 3); i++) {
+      ctx.font = "40px system-ui, -apple-system, sans-serif";
+      ctx.fillText(medals[i], pad, y);
+      ctx.fillStyle = artistColors[i];
+      ctx.font = "bold 40px system-ui, -apple-system, sans-serif";
+      ctx.fillText(topArtists[i], pad + 60, y);
+      y += 56;
+    }
   }
 
-  // ── Bottom watermark area ──
+  // Watermark
   const bottomY = H - 100;
-
-  // Divider
   ctx.strokeStyle = "rgba(255,255,255,0.06)";
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -317,19 +301,16 @@ async function generateStoryImage(
   ctx.lineTo(W - pad, bottomY - 30);
   ctx.stroke();
 
-  // @ivannsmb handle
   ctx.fillStyle = "rgba(255,255,255,0.3)";
   ctx.font = "bold 24px system-ui, -apple-system, sans-serif";
   ctx.fillText("@ivannsmb", pad, bottomY + 10);
 
-  // URL on the right
   ctx.textAlign = "right";
   ctx.fillStyle = "rgba(255,255,255,0.2)";
   ctx.font = "22px system-ui, -apple-system, sans-serif";
   ctx.fillText("vibebify.ivanmendoza.dev", W - pad, bottomY + 10);
   ctx.textAlign = "left";
 
-  // Mini logo bottom center
   ctx.textAlign = "center";
   ctx.fillStyle = "rgba(255,255,255,0.15)";
   ctx.font = "bold 18px system-ui, -apple-system, sans-serif";
@@ -343,25 +324,31 @@ async function generateStoryImage(
   );
 }
 
+// ─── In-page component ───
+
 export function GenreDnaCard({
   displayName,
   avatarUrl,
   genres,
-  topArtist,
+  topArtists = [],
   streak,
 }: GenreDnaCardProps) {
   const [sharing, setSharing] = useState(false);
+  const [animate, setAnimate] = useState(false);
 
   const totalCount = genres.reduce((sum, g) => sum + g.count, 0);
   const topGenres = genres.slice(0, 8);
 
+  useEffect(() => {
+    const t = setTimeout(() => setAnimate(true), 100);
+    return () => clearTimeout(t);
+  }, []);
+
   const shareCard = async () => {
     haptic("success");
     setSharing(true);
-
     try {
-      const blob = await generateStoryImage(displayName, avatarUrl, genres, topArtist, streak);
-
+      const blob = await generateStoryImage(displayName, avatarUrl, genres, topArtists, streak);
       if (navigator.share && navigator.canShare({ files: [new File([blob], "dna.png")] })) {
         await navigator.share({
           title: "My Music DNA — Vibebify",
@@ -383,114 +370,133 @@ export function GenreDnaCard({
     }
   };
 
+  const topGenre = topGenres[0];
+  const topColor = topGenre ? getGenreColor(topGenre.name) : "#ff2d7b";
+
   return (
-    <div className="flex flex-col gap-3">
-      {/* Preview card (in-page) */}
-      <div className="bg-card border border-border p-5 relative overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-punk-pink/5 rounded-full blur-2xl" />
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-punk-cyan/5 rounded-full blur-2xl" />
+    <div className="flex flex-col gap-5">
+      {/* Hero section — pie chart with avatar */}
+      <div className="relative overflow-hidden rounded-lg">
+        {/* Glowing background */}
+        <div className="absolute inset-0 bg-card" />
+        <div
+          className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full blur-[100px] opacity-20"
+          style={{ backgroundColor: topColor }}
+        />
+        <div className="absolute bottom-0 right-0 w-48 h-48 rounded-full blur-[80px] opacity-10 bg-punk-cyan" />
+        <div className="absolute top-0 left-0 w-32 h-32 rounded-full blur-[60px] opacity-10 bg-punk-purple" />
 
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-4 relative z-10">
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt=""
-              className="w-10 h-10 rounded-full border border-border"
-            />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-punk-purple flex items-center justify-center text-sm font-bold">
-              {displayName.charAt(0)}
-            </div>
-          )}
-          <div>
-            <p className="text-sm font-bold">{displayName}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
-              Music DNA
-            </p>
-          </div>
-          {streak != null && streak > 0 && (
-            <span className="ml-auto text-punk-orange text-xs font-bold flex items-center gap-1">
-              🔥 {streak}
-            </span>
-          )}
-        </div>
-
-        {/* DNA Strand visualization */}
-        <div className="flex gap-1 mb-4 h-8 relative z-10">
-          {topGenres.map((genre, i) => {
-            const pct = (genre.count / totalCount) * 100;
-            const color = getGenreColor(genre.name);
-            return (
-              <div
-                key={genre.name}
-                className="relative group h-full"
-                style={{
-                  width: `${Math.max(pct, 5)}%`,
-                  backgroundColor: color,
-                  opacity: 1 - i * 0.05,
-                }}
-                title={`${genre.name}: ${Math.round(pct)}%`}
-              >
-                {i === 0 && (
-                  <div
-                    className="absolute inset-0 animate-pulse"
-                    style={{ backgroundColor: color, opacity: 0.3 }}
-                  />
-                )}
+        <div className="relative z-10 px-5 pt-5 pb-6">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-3">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="w-9 h-9 rounded-full border-2 border-punk-pink" />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-punk-purple flex items-center justify-center text-xs font-bold">
+                  {displayName.charAt(0)}
+                </div>
+              )}
+              <div>
+                <p className="text-sm font-bold leading-tight">{displayName}</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-[0.25em]">Music DNA</p>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Genre labels */}
-        <div className="flex flex-wrap gap-1.5 mb-4 relative z-10">
-          {topGenres.map((genre) => {
-            const pct = Math.round((genre.count / totalCount) * 100);
-            const color = getGenreColor(genre.name);
-            return (
-              <span
-                key={genre.name}
-                className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider"
-              >
-                <span
-                  className="w-2 h-2 inline-block -skew-x-6"
-                  style={{ backgroundColor: color }}
-                />
-                <span className="text-foreground/80">{genre.name}</span>
-                <span className="text-muted-foreground">{pct}%</span>
+            </div>
+            {streak != null && streak > 0 && (
+              <span className="text-punk-orange text-xs font-bold flex items-center gap-1">
+                🔥 {streak}
               </span>
-            );
-          })}
-        </div>
-
-        {/* Top artist callout */}
-        {topArtist && (
-          <div className="border-t border-border pt-3 relative z-10">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
-              #1 Artist
-            </p>
-            <p className="text-sm font-bold">{topArtist}</p>
+            )}
           </div>
-        )}
 
-        {/* Watermark */}
-        <div className="absolute bottom-2 right-3 z-10">
-          <span className="text-[8px] text-muted-foreground/50 uppercase tracking-[0.3em]">
-            Vibebify
-          </span>
+          {/* Pie chart centered */}
+          <div
+            className="flex justify-center my-5 transition-all duration-1000 ease-out"
+            style={{
+              opacity: animate ? 1 : 0,
+              transform: animate ? "scale(1) rotate(0deg)" : "scale(0.7) rotate(-30deg)",
+            }}
+          >
+            <PieChartSVG
+              genres={topGenres}
+              totalCount={totalCount}
+              avatarUrl={avatarUrl}
+              displayName={displayName}
+              animate={animate}
+            />
+          </div>
+
+          {/* Genre pills in a ring-style layout */}
+          <div
+            className="flex flex-wrap justify-center gap-1.5 transition-all duration-700 delay-500"
+            style={{ opacity: animate ? 1 : 0, transform: animate ? "translateY(0)" : "translateY(12px)" }}
+          >
+            {topGenres.map((genre, i) => {
+              const pct = Math.round((genre.count / totalCount) * 100);
+              const color = getGenreColor(genre.name);
+              return (
+                <span
+                  key={genre.name}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 border text-[10px] font-bold uppercase tracking-wider transition-all duration-500"
+                  style={{
+                    borderColor: color + "40",
+                    backgroundColor: color + "10",
+                    transitionDelay: `${600 + i * 80}ms`,
+                    opacity: animate ? 1 : 0,
+                    transform: animate ? "translateY(0)" : "translateY(8px)",
+                  }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+                  <span className="text-foreground/90">{genre.name}</span>
+                  <span style={{ color }}>{pct}%</span>
+                </span>
+              );
+            })}
+          </div>
         </div>
       </div>
+
+      {/* Top 3 Artists */}
+      {topArtists.length > 0 && (
+        <div
+          className="bg-card border border-border p-4 relative overflow-hidden transition-all duration-700 delay-700"
+          style={{ opacity: animate ? 1 : 0, transform: animate ? "translateY(0)" : "translateY(16px)" }}
+        >
+          <div className="absolute top-0 right-0 w-24 h-24 rounded-full blur-[60px] opacity-10 bg-punk-pink" />
+          <p className="text-[10px] text-muted-foreground uppercase tracking-[0.25em] mb-3 relative z-10">
+            Top Artists
+          </p>
+          <div className="flex flex-col gap-2.5 relative z-10">
+            {topArtists.slice(0, 3).map((artist, i) => {
+              const medals = ["🥇", "🥈", "🥉"];
+              const colors = ["text-punk-pink", "text-punk-cyan", "text-punk-yellow"];
+              return (
+                <div
+                  key={artist}
+                  className="flex items-center gap-3 transition-all duration-500"
+                  style={{
+                    transitionDelay: `${900 + i * 150}ms`,
+                    opacity: animate ? 1 : 0,
+                    transform: animate ? "translateX(0)" : "translateX(-20px)",
+                  }}
+                >
+                  <span className="text-lg w-7 text-center">{medals[i]}</span>
+                  <span className={`text-sm font-bold ${colors[i]}`}>{artist}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Share button */}
       <Button
         onPress={shareCard}
         isDisabled={sharing}
-        className="self-center px-4 py-2 text-xs font-bold uppercase tracking-wider border-2 border-punk-cyan text-punk-cyan -skew-x-3 cursor-pointer hover:bg-punk-cyan/10 transition-colors disabled:opacity-40"
+        className="self-center px-5 py-2.5 text-xs font-bold uppercase tracking-wider border-2 border-punk-cyan text-punk-cyan -skew-x-3 cursor-pointer hover:bg-punk-cyan/10 transition-colors disabled:opacity-40"
       >
-        <span className="skew-x-3 flex items-center gap-1.5">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+        <span className="skew-x-3 flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
             <polyline points="16 6 12 2 8 6" />
             <line x1="12" y1="2" x2="12" y2="15" />
@@ -499,5 +505,167 @@ export function GenreDnaCard({
         </span>
       </Button>
     </div>
+  );
+}
+
+// ─── SVG Donut Pie Chart with Avatar Center ───
+
+function PieChartSVG({
+  genres,
+  totalCount,
+  avatarUrl,
+  displayName,
+  animate,
+}: {
+  genres: { name: string; count: number }[];
+  totalCount: number;
+  avatarUrl?: string;
+  displayName: string;
+  animate: boolean;
+}) {
+  const size = 220;
+  const cx = size / 2;
+  const cy = size / 2;
+  const outerR = 105;
+  const innerR = 60;
+
+  const slices: { d: string; color: string }[] = [];
+  let startAngle = -Math.PI / 2;
+
+  for (const genre of genres) {
+    const sliceAngle = (genre.count / totalCount) * Math.PI * 2;
+    const endAngle = startAngle + sliceAngle;
+    const largeArc = sliceAngle > Math.PI ? 1 : 0;
+
+    const x1o = cx + outerR * Math.cos(startAngle);
+    const y1o = cy + outerR * Math.sin(startAngle);
+    const x2o = cx + outerR * Math.cos(endAngle);
+    const y2o = cy + outerR * Math.sin(endAngle);
+    const x1i = cx + innerR * Math.cos(endAngle);
+    const y1i = cy + innerR * Math.sin(endAngle);
+    const x2i = cx + innerR * Math.cos(startAngle);
+    const y2i = cy + innerR * Math.sin(startAngle);
+
+    const d = [
+      `M ${x1o} ${y1o}`,
+      `A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2o} ${y2o}`,
+      `L ${x1i} ${y1i}`,
+      `A ${innerR} ${innerR} 0 ${largeArc} 0 ${x2i} ${y2i}`,
+      "Z",
+    ].join(" ");
+
+    slices.push({ d, color: getGenreColor(genre.name) });
+    startAngle = endAngle;
+  }
+
+  // Glow filter
+  const topColor = genres[0] ? getGenreColor(genres[0].name) : "#ff2d7b";
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className="drop-shadow-lg"
+    >
+      <defs>
+        <filter id="pie-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4" result="blur" />
+          <feFlood floodColor={topColor} floodOpacity="0.3" />
+          <feComposite in2="blur" operator="in" />
+          <feMerge>
+            <feMergeNode />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <clipPath id="avatar-clip-preview">
+          <circle cx={cx} cy={cy} r={innerR - 5} />
+        </clipPath>
+      </defs>
+
+      {/* Glow ring */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={outerR + 4}
+        fill="none"
+        stroke={topColor}
+        strokeWidth="1"
+        opacity="0.2"
+      />
+
+      {/* Pie slices */}
+      <g filter="url(#pie-glow)">
+        {slices.map((slice, i) => (
+          <path
+            key={i}
+            d={slice.d}
+            fill={slice.color}
+            opacity={1 - i * 0.04}
+            stroke="#0a0a0a"
+            strokeWidth="2"
+            style={{
+              transition: "opacity 0.6s ease-out",
+              transitionDelay: `${i * 100}ms`,
+            }}
+          />
+        ))}
+      </g>
+
+      {/* Inner dark circle */}
+      <circle cx={cx} cy={cy} r={innerR + 1} fill="#0a0a0a" />
+
+      {/* Pink ring around avatar */}
+      <circle cx={cx} cy={cy} r={innerR - 2} fill="none" stroke="#ff2d7b" strokeWidth="2" opacity="0.8" />
+
+      {/* Spinning accent ring */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={outerR + 8}
+        fill="none"
+        stroke="url(#ring-gradient)"
+        strokeWidth="1.5"
+        strokeDasharray="8 16"
+        opacity={animate ? "0.4" : "0"}
+        style={{ transition: "opacity 1s ease-out", transformOrigin: "center" }}
+        className="animate-[spin_20s_linear_infinite]"
+      />
+      <defs>
+        <linearGradient id="ring-gradient" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#ff2d7b" />
+          <stop offset="50%" stopColor="#00f0ff" />
+          <stop offset="100%" stopColor="#b44dff" />
+        </linearGradient>
+      </defs>
+
+      {/* Avatar */}
+      {avatarUrl ? (
+        <image
+          href={avatarUrl}
+          x={cx - (innerR - 5)}
+          y={cy - (innerR - 5)}
+          width={(innerR - 5) * 2}
+          height={(innerR - 5) * 2}
+          clipPath="url(#avatar-clip-preview)"
+        />
+      ) : (
+        <>
+          <circle cx={cx} cy={cy} r={innerR - 5} fill="#b44dff" />
+          <text
+            x={cx}
+            y={cy}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill="white"
+            fontSize="32"
+            fontWeight="bold"
+            fontFamily="system-ui, -apple-system, sans-serif"
+          >
+            {displayName.charAt(0)}
+          </text>
+        </>
+      )}
+    </svg>
   );
 }

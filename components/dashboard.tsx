@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -41,7 +42,7 @@ interface SpotifyArtist {
 type MainTab = "feed" | "discover" | "search" | "duels" | "stats" | "profile";
 type StatsTab = "recent" | "artists" | "tracks" | "dna";
 
-export function Dashboard({ user, onSignOut }: DashboardProps) {
+export function Dashboard({ user }: DashboardProps) {
   const [recentTracks, setRecentTracks] = useState<[]>([]);
   const [topArtists, setTopArtists] = useState<SpotifyArtist[]>([]);
   const [topTracks, setTopTracks] = useState<SpotifyTrack[]>([]);
@@ -169,13 +170,10 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
   const topGenre = uniqueGenres[0] ?? "eclectic";
 
   // Genre counts for DNA card
-  const genreCounts = allGenres.reduce(
-    (acc: Record<string, number>, g) => {
-      acc[g] = (acc[g] || 0) + 1;
-      return acc;
-    },
-    {},
-  );
+  const genreCounts = allGenres.reduce((acc: Record<string, number>, g) => {
+    acc[g] = (acc[g] || 0) + 1;
+    return acc;
+  }, {});
   const sortedGenres = Object.entries(genreCounts)
     .sort(([, a], [, b]) => b - a)
     .map(([name, count]) => ({ name, count }));
@@ -229,7 +227,16 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
               }`}
               aria-label="Search users"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
@@ -242,12 +249,18 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                 setMainTab("profile");
               }}
               className={`w-8 h-8 rounded-full border-2 transition-colors cursor-pointer overflow-hidden ${
-                mainTab === "profile" ? "border-punk-pink" : "border-border hover:border-muted-foreground"
+                mainTab === "profile"
+                  ? "border-punk-pink"
+                  : "border-border hover:border-muted-foreground"
               }`}
               aria-label="Your profile"
             >
               {avatarUrl ? (
-                <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
+                <img
+                  src={avatarUrl}
+                  alt={displayName}
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <div className="w-full h-full bg-punk-purple flex items-center justify-center text-[10px] font-bold">
                   {displayName.charAt(0)}
@@ -287,7 +300,12 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                     {displayName}
                   </h2>
                 </div>
-                {currentStreak > 0 && <StreakBadge currentStreak={currentStreak} longestStreak={longestStreak} />}
+                {currentStreak > 0 && (
+                  <StreakBadge
+                    currentStreak={currentStreak}
+                    longestStreak={longestStreak}
+                  />
+                )}
               </div>
 
               {/* Compose CTA */}
@@ -422,11 +440,12 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
             {/* Stats sub-tabs */}
             <nav className="border-b border-border">
               <div className="flex max-w-lg mx-auto">
-                {(["recent", "artists", "tracks", "dna"] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setStatsTab(tab)}
-                    className={`
+                {(["recent", "artists", "tracks", "dna"] as const).map(
+                  (tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setStatsTab(tab)}
+                      className={`
                       flex-1 py-3 text-xs font-bold uppercase tracking-[0.15em] text-center
                       transition-colors cursor-pointer border-b-2
                       ${
@@ -435,16 +454,17 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                           : "border-transparent text-muted-foreground hover:text-foreground"
                       }
                     `}
-                  >
-                    {tab === "recent"
-                      ? "Recent"
-                      : tab === "artists"
-                        ? "Artists"
-                        : tab === "tracks"
-                          ? "Tracks"
-                          : "DNA"}
-                  </button>
-                ))}
+                    >
+                      {tab === "recent"
+                        ? "Recent"
+                        : tab === "artists"
+                          ? "Artists"
+                          : tab === "tracks"
+                            ? "Tracks"
+                            : "DNA"}
+                    </button>
+                  ),
+                )}
               </div>
             </nav>
 
@@ -566,7 +586,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                           displayName={displayName}
                           avatarUrl={avatarUrl}
                           genres={sortedGenres}
-                          topArtist={topArtists[0]?.name}
+                          topArtists={topArtists.slice(0, 3).map((a) => a.name)}
                           streak={currentStreak}
                         />
                       ) : (
