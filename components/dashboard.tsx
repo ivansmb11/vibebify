@@ -15,6 +15,7 @@ import { ComposePost } from "./compose-post";
 import { UserSearch } from "./user-search";
 import { UserProfile } from "./user-profile";
 import { haptic } from "@/lib/haptics";
+import { getFeed, getDiscover, getStreak, getDuels, voteDuel } from "@/lib/db";
 import { StreakBadge } from "./streak-badge";
 import { GenreDnaCard } from "./genre-dna-card";
 import { DuelCard, type Duel } from "./duel-card";
@@ -113,47 +114,33 @@ export function Dashboard({ user }: DashboardProps) {
   const fetchFeed = useCallback(async () => {
     setFeedLoading(true);
     try {
-      const res = await fetch("/api/feed");
-      if (res.ok) {
-        const data = await res.json();
-        setFeedPosts(data.posts ?? []);
-      }
-    } finally {
-      setFeedLoading(false);
-    }
+      const data = await getFeed();
+      setFeedPosts((data.posts ?? []) as Post[]);
+    } catch {}
+    setFeedLoading(false);
   }, []);
 
   const fetchDiscover = useCallback(async () => {
     try {
-      const res = await fetch("/api/discover");
-      if (res.ok) {
-        const data = await res.json();
-        setDiscoverPosts(data.posts ?? []);
-      }
+      const data = await getDiscover();
+      setDiscoverPosts((data.posts ?? []) as Post[]);
     } catch {}
   }, []);
 
   const fetchStreak = useCallback(async () => {
     try {
-      const res = await fetch(`/api/users/${user.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setCurrentStreak(data.current_streak ?? 0);
-        setLongestStreak(data.longest_streak ?? 0);
-      }
+      const data = await getStreak(user.id);
+      setCurrentStreak(data.current_streak);
+      setLongestStreak(data.longest_streak);
     } catch {}
   }, [user.id]);
 
   const fetchDuels = useCallback(async () => {
     setDuelsLoading(true);
     try {
-      const res = await fetch("/api/duels?filter=all");
-      if (res.ok) {
-        setDuels(await res.json());
-      }
-    } finally {
-      setDuelsLoading(false);
-    }
+      setDuels(await getDuels("all"));
+    } catch {}
+    setDuelsLoading(false);
   }, []);
 
   const fetchDnaData = useCallback(async () => {

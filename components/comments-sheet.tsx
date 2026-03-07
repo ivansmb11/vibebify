@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import {
   Dialog,
-  DialogTrigger,
   Modal,
   ModalOverlay,
   TextField,
@@ -11,6 +10,7 @@ import {
   Button,
 } from "react-aria-components";
 import { haptic } from "@/lib/haptics";
+import { getComments, createComment } from "@/lib/db";
 
 interface Comment {
   id: string;
@@ -40,31 +40,22 @@ export function CommentsSheet({
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/posts/${postId}/comments`)
-      .then((r) => r.json())
-      .then((data) => {
-        setComments(data);
-        setLoading(false);
-      });
+    getComments(postId).then((data) => {
+      setComments(data as Comment[]);
+      setLoading(false);
+    });
   }, [postId]);
 
   const submitComment = async () => {
     if (!newComment.trim() || submitting) return;
     haptic("medium");
     setSubmitting(true);
-
-    const res = await fetch(`/api/posts/${postId}/comments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: newComment.trim() }),
-    });
-
-    if (res.ok) {
-      const comment = await res.json();
-      setComments((prev) => [...prev, comment]);
+    try {
+      const comment = await createComment(postId, newComment.trim());
+      setComments((prev) => [...prev, comment as Comment]);
       setNewComment("");
       onCommentAdded();
-    }
+    } catch {}
     setSubmitting(false);
   };
 

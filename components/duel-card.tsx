@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "react-aria-components";
 import { haptic } from "@/lib/haptics";
+import { voteDuel } from "@/lib/db";
 
 interface DuelProfile {
   id: string;
@@ -57,18 +58,12 @@ export function DuelCard({ duel, currentUserId, onAccept }: DuelCardProps) {
     if (voting || userVote) return;
     haptic("medium");
     setVoting(true);
-
-    const res = await fetch(`/api/duels/${duel.id}/vote`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ voted_for: votedFor }),
-    });
-
-    if (res.ok || res.status === 409) {
+    try {
+      await voteDuel(duel.id, votedFor);
       setUserVote(votedFor);
       if (votedFor === "creator") setCreatorVotes((v) => v + 1);
       else setOpponentVotes((v) => v + 1);
-    }
+    } catch {}
     setVoting(false);
   };
 

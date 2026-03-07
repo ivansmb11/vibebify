@@ -10,6 +10,7 @@ import {
   Button,
 } from "react-aria-components";
 import { haptic } from "@/lib/haptics";
+import { createDuel, acceptDuel } from "@/lib/db";
 import type { Duel } from "./duel-card";
 
 interface SpotifyTrack {
@@ -57,37 +58,27 @@ export function CreateDuel({
     if (!selectedTrack || submitting) return;
     haptic("medium");
     setSubmitting(true);
-
-    const url = acceptingDuelId
-      ? `/api/duels/${acceptingDuelId}/accept`
-      : "/api/duels";
-
-    const body = acceptingDuelId
-      ? {
-          opponent_song_title: selectedTrack.title,
-          opponent_song_artist: selectedTrack.artist,
-          opponent_song_image_url: selectedTrack.image_url,
-          opponent_spotify_track_id: selectedTrack.spotify_track_id,
-        }
-      : {
+    try {
+      let duel: Duel;
+      if (acceptingDuelId) {
+        duel = await acceptDuel(acceptingDuelId, {
+          title: selectedTrack.title,
+          artist: selectedTrack.artist,
+          image_url: selectedTrack.image_url,
+          spotify_track_id: selectedTrack.spotify_track_id,
+        });
+      } else {
+        duel = await createDuel({
           creator_song_title: selectedTrack.title,
           creator_song_artist: selectedTrack.artist,
           creator_song_image_url: selectedTrack.image_url,
           creator_spotify_track_id: selectedTrack.spotify_track_id,
-        };
-
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    if (res.ok) {
-      const duel = await res.json();
+        });
+      }
       onCreated(duel);
       setSelectedTrack(null);
       onClose();
-    }
+    } catch {}
     setSubmitting(false);
   };
 

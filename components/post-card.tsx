@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "react-aria-components";
 import { CommentsSheet } from "./comments-sheet";
 import { haptic } from "@/lib/haptics";
+import { likePost, unlikePost, deletePost } from "@/lib/db";
 
 interface PostProfile {
   id: string;
@@ -48,20 +49,20 @@ export function PostCard({ post, currentUserId, onDelete, onViewProfile }: PostC
     if (likeLoading) return;
     haptic(liked ? "light" : "success");
     setLikeLoading(true);
-
-    const method = liked ? "DELETE" : "POST";
-    const res = await fetch(`/api/posts/${post.id}/like`, { method });
-
-    if (res.ok || res.status === 409) {
+    try {
+      if (liked) await unlikePost(post.id);
+      else await likePost(post.id);
       setLiked(!liked);
       setLikesCount((c) => c + (liked ? -1 : 1));
-    }
+    } catch {}
     setLikeLoading(false);
   };
 
   const handleDelete = async () => {
-    const res = await fetch(`/api/posts/${post.id}`, { method: "DELETE" });
-    if (res.ok) onDelete?.(post.id);
+    try {
+      await deletePost(post.id);
+      onDelete?.(post.id);
+    } catch {}
   };
 
   const timeAgo = getTimeAgo(post.created_at);

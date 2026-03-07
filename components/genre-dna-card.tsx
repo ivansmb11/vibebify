@@ -458,7 +458,7 @@ export function GenreDnaCard({
                   <span style={{ color }}>{pct}%</span>
                   <button
                     onClick={() => skipGenre(genre.name)}
-                    className="ml-0.5 opacity-40 hover:opacity-100 transition-opacity cursor-pointer text-foreground/60 hover:text-punk-pink"
+                    className="ml-0.5 w-4 h-4 flex items-center justify-center rounded-full opacity-60 hover:opacity-100 hover:bg-punk-pink/20 transition-all cursor-pointer text-foreground/80 hover:text-punk-pink text-xs leading-none"
                     title={`Skip ${genre.name}`}
                   >
                     ×

@@ -11,6 +11,7 @@ import {
   Button,
 } from "react-aria-components";
 import { haptic } from "@/lib/haptics";
+import { createPost } from "@/lib/db";
 import type { Post } from "./post-card";
 
 interface SongResult {
@@ -101,11 +102,8 @@ export function ComposePost({
     if (!content.trim() || !selectedSong || submitting) return;
     haptic("medium");
     setSubmitting(true);
-
-    const res = await fetch("/api/posts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    try {
+      const post = await createPost({
         content: content.trim(),
         song_title: selectedSong.title,
         song_artist: selectedSong.artist,
@@ -113,16 +111,12 @@ export function ComposePost({
         song_image_url: selectedSong.image_url,
         spotify_track_id: selectedSong.spotify_track_id,
         musicbrainz_id: selectedSong.musicbrainz_id,
-      }),
-    });
-
-    if (res.ok) {
-      const post = await res.json();
+      });
       onPostCreated({ ...post, liked_by_user: false, likes_count: 0, comments_count: 0 });
       setContent("");
       setSelectedSong(null);
       onClose();
-    }
+    } catch {}
     setSubmitting(false);
   };
 

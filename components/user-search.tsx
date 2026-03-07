@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { TextField, Input, Button } from "react-aria-components";
 import { haptic } from "@/lib/haptics";
+import { searchUsers, followUser, unfollowUser } from "@/lib/db";
 
 interface UserResult {
   id: string;
@@ -33,35 +34,25 @@ export function UserSearch({ onSelectUser }: UserSearchProps) {
     debounceRef.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const res = await fetch(
-          `/api/search/users?q=${encodeURIComponent(q)}`
-        );
-        if (res.ok) {
-          setResults(await res.json());
-        }
-      } finally {
-        setSearching(false);
-      }
+        const data = await searchUsers(q);
+        setResults(data as UserResult[]);
+      } catch {}
+      setSearching(false);
     }, 300);
   }, []);
 
   const toggleFollow = async (userId: string, isFollowing: boolean) => {
     haptic(isFollowing ? "light" : "success");
     setFollowLoading(userId);
-    const method = isFollowing ? "DELETE" : "POST";
-    const res = await fetch("/api/follow", {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ following_id: userId }),
-    });
-
-    if (res.ok || res.status === 409) {
+    try {
+      if (isFollowing) await unfollowUser(userId);
+      else await followUser(userId);
       setResults((prev) =>
         prev.map((u) =>
           u.id === userId ? { ...u, is_following: !isFollowing } : u
         )
       );
-    }
+    } catch {}
     setFollowLoading(null);
   };
 

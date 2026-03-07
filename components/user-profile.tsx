@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "react-aria-components";
 import { haptic } from "@/lib/haptics";
+import { getUserProfile, getUserPosts, followUser, unfollowUser } from "@/lib/db";
 import { PostCard, type Post } from "./post-card";
 import { StatBadge } from "./stat-badge";
 
@@ -37,19 +38,14 @@ export function UserProfile({
   const fetchProfile = useCallback(async () => {
     setLoading(true);
     try {
-      const [profileRes, postsRes] = await Promise.all([
-        fetch(`/api/users/${userId}`),
-        fetch(`/api/users/${userId}/posts`),
+      const [profileData, postsData] = await Promise.all([
+        getUserProfile(userId),
+        getUserPosts(userId),
       ]);
-
-      if (profileRes.ok) setProfile(await profileRes.json());
-      if (postsRes.ok) {
-        const data = await postsRes.json();
-        setPosts(data.posts ?? []);
-      }
-    } finally {
-      setLoading(false);
-    }
+      if (profileData) setProfile(profileData as ProfileData);
+      setPosts((postsData.posts ?? []) as Post[]);
+    } catch {}
+    setLoading(false);
   }, [userId]);
 
   useEffect(() => {
@@ -60,15 +56,9 @@ export function UserProfile({
     if (!profile || followLoading) return;
     haptic(profile.is_following ? "light" : "success");
     setFollowLoading(true);
-
-    const method = profile.is_following ? "DELETE" : "POST";
-    const res = await fetch("/api/follow", {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ following_id: userId }),
-    });
-
-    if (res.ok || res.status === 409) {
+    try {
+      if (profile.is_following) await unfollowUser(userId);
+      else await followUser(userId);
       setProfile((p) =>
         p
           ? {
@@ -78,7 +68,7 @@ export function UserProfile({
             }
           : p
       );
-    }
+    } catch {}
     setFollowLoading(false);
   };
 
