@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -32,7 +33,7 @@ export default function AuthCodeError() {
           </span>
         </div>
 
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold">
+        <h1 className="font-(family-name:--font-display) text-2xl font-bold">
           {errorInfo.error.replace(/_/g, " ")}
         </h1>
 

@@ -1,14 +1,8 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState } from "react";
-import {
-  Dialog,
-  Modal,
-  ModalOverlay,
-  TextField,
-  Input,
-  Button,
-} from "react-aria-components";
+import { Dialog, Modal, ModalOverlay, Button } from "react-aria-components";
 import { haptic } from "@/lib/haptics";
 import { createDuel, acceptDuel } from "@/lib/db";
 import type { Duel } from "./duel-card";
@@ -126,13 +120,23 @@ export function CreateDuel({
             {selectedTrack ? (
               <div className="flex items-center gap-3 bg-muted border border-punk-orange/30 p-3 mb-4">
                 {selectedTrack.image_url ? (
-                  <img src={selectedTrack.image_url} alt="" className="w-12 h-12 object-cover" />
+                  <img
+                    src={selectedTrack.image_url}
+                    alt=""
+                    className="w-12 h-12 object-cover"
+                  />
                 ) : (
-                  <div className="w-12 h-12 bg-border flex items-center justify-center text-xl text-muted-foreground">♪</div>
+                  <div className="w-12 h-12 bg-border flex items-center justify-center text-xl text-muted-foreground">
+                    ♪
+                  </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold truncate">{selectedTrack.title}</p>
-                  <p className="text-xs text-muted-foreground truncate">{selectedTrack.artist}</p>
+                  <p className="text-sm font-bold truncate">
+                    {selectedTrack.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {selectedTrack.artist}
+                  </p>
                 </div>
                 <Button
                   onPress={() => setSelectedTrack(null)}
@@ -154,12 +158,20 @@ export function CreateDuel({
                       className="flex items-center gap-3 p-2 hover:bg-card-hover cursor-pointer text-left transition-colors"
                     >
                       {track.album.images?.[2]?.url ? (
-                        <img src={track.album.images[2].url} alt="" className="w-8 h-8 object-cover" />
+                        <img
+                          src={track.album.images[2].url}
+                          alt=""
+                          className="w-8 h-8 object-cover"
+                        />
                       ) : (
-                        <div className="w-8 h-8 bg-border flex items-center justify-center text-muted-foreground text-xs">♪</div>
+                        <div className="w-8 h-8 bg-border flex items-center justify-center text-muted-foreground text-xs">
+                          ♪
+                        </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate">{track.name}</p>
+                        <p className="text-sm font-semibold truncate">
+                          {track.name}
+                        </p>
                         <p className="text-xs text-muted-foreground truncate">
                           {track.artists.map((a) => a.name).join(", ")}
                         </p>

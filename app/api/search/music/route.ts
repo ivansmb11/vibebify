@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     }));
 
     return NextResponse.json(tracks);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

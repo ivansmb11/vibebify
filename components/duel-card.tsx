@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState } from "react";
@@ -46,12 +47,14 @@ export function DuelCard({ duel, currentUserId, onAccept }: DuelCardProps) {
   const [voting, setVoting] = useState(false);
 
   const totalVotes = creatorVotes + opponentVotes;
-  const creatorPct = totalVotes > 0 ? Math.round((creatorVotes / totalVotes) * 100) : 50;
+  const creatorPct =
+    totalVotes > 0 ? Math.round((creatorVotes / totalVotes) * 100) : 50;
   const opponentPct = totalVotes > 0 ? 100 - creatorPct : 50;
 
   const isCreator = duel.creator_id === currentUserId;
   const isOpponent = duel.opponent_id === currentUserId;
-  const canVote = duel.status === "active" && !userVote && !isCreator && !isOpponent;
+  const canVote =
+    duel.status === "active" && !userVote && !isCreator && !isOpponent;
   const showResults = !!userVote || isCreator || isOpponent;
 
   const vote = async (votedFor: "creator" | "opponent") => {
@@ -100,7 +103,9 @@ export function DuelCard({ duel, currentUserId, onAccept }: DuelCardProps) {
 
         {/* VS divider */}
         <div className="flex items-center justify-center px-2 bg-muted">
-          <span className="text-xs font-bold text-punk-pink -rotate-12">VS</span>
+          <span className="text-xs font-bold text-punk-pink -rotate-12">
+            VS
+          </span>
         </div>
 
         {/* Opponent side */}
@@ -164,7 +169,7 @@ function SongSide({
   songTitle,
   songArtist,
   songImage,
-  spotifyId,
+  // spotifyId,
   votes,
   pct,
   showResults,
@@ -205,7 +210,11 @@ function SongSide({
       {/* User */}
       <div className="flex items-center gap-1.5">
         {profile.avatar_url ? (
-          <img src={profile.avatar_url} alt="" className="w-5 h-5 rounded-full" />
+          <img
+            src={profile.avatar_url}
+            alt=""
+            className="w-5 h-5 rounded-full"
+          />
         ) : (
           <div className="w-5 h-5 rounded-full bg-punk-purple text-[8px] flex items-center justify-center font-bold">
             {profile.display_name?.charAt(0)}
@@ -226,31 +235,40 @@ function SongSide({
           </div>
         )}
         {showResults && isWinning && totalVotes > 0 && (
-          <span className="absolute -top-3 -right-3 text-lg rotate-[25deg] drop-shadow-md">👑</span>
+          <span className="absolute -top-3 -right-3 text-lg rotate-25 drop-shadow-md">
+            👑
+          </span>
         )}
       </div>
       <div className="min-w-0 w-full">
         <p className="text-xs font-bold truncate">{songTitle}</p>
-        <p className="text-[10px] text-muted-foreground truncate">{songArtist}</p>
+        <p className="text-[10px] text-muted-foreground truncate">
+          {songArtist}
+        </p>
       </div>
 
       {/* Results */}
       {showResults && (
-        <div className={`text-xs font-bold font-mono ${isWinning ? `text-${accentColor}` : "text-muted-foreground"}`}>
-          {pct}%
-          <span className="text-[10px] font-normal ml-1">({votes})</span>
+        <div
+          className={`text-xs font-bold font-mono ${isWinning ? `text-${accentColor}` : "text-muted-foreground"}`}
+        >
+          {pct}%<span className="text-[10px] font-normal ml-1">({votes})</span>
         </div>
       )}
 
       {/* Vote hint */}
       {canVote && (
-        <span className={`text-[9px] uppercase tracking-wider text-${accentColor} font-bold`}>
+        <span
+          className={`text-[9px] uppercase tracking-wider text-${accentColor} font-bold`}
+        >
           Tap to vote
         </span>
       )}
 
       {isVoted && (
-        <span className={`text-[9px] uppercase tracking-wider text-${accentColor} font-bold`}>
+        <span
+          className={`text-[9px] uppercase tracking-wider text-${accentColor} font-bold`}
+        >
           Your pick ✓
         </span>
       )}

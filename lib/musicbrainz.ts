@@ -16,7 +16,7 @@ interface MBSearchResult {
 export async function searchRecordings(
   query: string,
   artist?: string,
-  limit = 10
+  limit = 10,
 ): Promise<MBSearchResult> {
   const q = artist ? `recording:"${query}" AND artist:"${artist}"` : query;
   const url = `${MB_API}/recording?query=${encodeURIComponent(q)}&limit=${limit}&fmt=json`;

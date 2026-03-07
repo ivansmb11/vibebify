@@ -36,24 +36,12 @@ app/
 ├── auth/
 │   ├── callback/route.ts             # OAuth callback, stores Spotify provider_token
 │   └── auth-code-error/page.tsx      # OAuth error page
-└── api/
+└── api/                              # Only 3 routes (require server secrets)
     ├── spotify/
     │   ├── recently-played/route.ts  # GET — recently played tracks (auto token refresh)
     │   └── top/route.ts              # GET — top artists/tracks (?type=&time_range=)
-    ├── feed/route.ts                 # GET — posts from followed users + self
-    ├── discover/route.ts             # GET — global feed
-    ├── posts/route.ts                # POST — create post
-    ├── posts/[id]/route.ts           # DELETE — delete own post
-    ├── posts/[id]/like/route.ts      # POST/DELETE — like/unlike
-    ├── posts/[id]/comments/route.ts  # GET/POST — comments
-    ├── follow/route.ts               # POST/DELETE — follow/unfollow
-    ├── users/[id]/route.ts           # GET — profile + follower counts + streak
-    ├── users/[id]/posts/route.ts     # GET — user's posts (paginated with cursor)
-    ├── search/users/route.ts         # GET — search users by display_name
-    ├── search/music/route.ts         # GET — search MusicBrainz recordings
-    ├── duels/route.ts                # GET/POST — list duels / create duel
-    ├── duels/[id]/accept/route.ts    # POST — accept duel with opponent song
-    └── duels/[id]/vote/route.ts      # POST — vote on a duel
+    └── search/
+        └── music/route.ts            # GET — search MusicBrainz recordings
 
 components/
 ├── dashboard.tsx         # Main app shell: tabs, bottom nav, all feature orchestration
@@ -76,6 +64,9 @@ components/
 └── create-duel.tsx       # Modal: create/accept duels, pick a song
 
 lib/
+├── db.ts                 # Client service layer (18 direct Supabase operations)
+├── validations.ts        # Zod v4 input validation schemas
+├── api.ts                # API route helpers (for remaining 3 server routes)
 ├── supabase/client.ts    # Browser Supabase client
 ├── supabase/server.ts    # Server Supabase client (cookies)
 ├── supabase/middleware.ts # Session refresh helper
@@ -88,7 +79,11 @@ middleware.ts             # Next.js middleware — Supabase session refresh
 supabase/migrations/
 ├── 20260306000000_create_profiles_and_history.sql  # profiles, listening_history, top_items, RLS
 ├── 20260306010000_social_features.sql              # follows, posts, likes, comments, triggers
-└── 20260306020000_streaks_dna_duels.sql            # streaks, duels, duel_votes, triggers
+├── 20260306020000_streaks_dna_duels.sql            # streaks, duels, duel_votes, triggers
+├── 20260306030000_fix_duel_accept_rls.sql          # RLS fix for duel acceptance
+├── 20260306040000_music_catalog.sql                # normalized genres, artists, songs tables
+├── 20260306050000_catalog_functions.sql            # upsert_genre, upsert_artist, upsert_song
+└── 20260306060000_query_functions.sql              # get_user_profile, accept_duel
 ```
 
 ## Database Schema (Supabase)
@@ -178,8 +173,16 @@ NEXT_PUBLIC_SITE_URL
 - **Spotify Web API** — listening data, OAuth
 - **MusicBrainz API** — music search (fallback when Spotify track not in recents)
 
-## Notes
-- All API routes require auth (supabase.auth.getUser())
+## Architecture Notes
+
+### Client-first with direct Supabase calls
+- Most CRUD operations go through `lib/db.ts` (browser Supabase client) — no API middleman
+- Only 3 API routes remain, all requiring server secrets (Spotify token refresh, MusicBrainz proxy)
+- Supabase RLS handles authorization at the database level
+- DB functions (`security definer`, `plpgsql`) handle atomic operations (e.g., `accept_duel` with row locking)
+- Zod v4 schemas in `lib/validations.ts` validate all user inputs before DB calls
+
+### General
 - Spotify token refresh happens automatically in API routes on 401
 - Supabase queries use foreign key hints for joins (e.g., `profiles!posts_user_id_fkey`)
 - The app is a single-page client component — `app/page.tsx` renders LandingPage or Dashboard based on auth state

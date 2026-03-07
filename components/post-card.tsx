@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState } from "react";
@@ -36,7 +37,12 @@ interface PostCardProps {
   onViewProfile?: (userId: string) => void;
 }
 
-export function PostCard({ post, currentUserId, onDelete, onViewProfile }: PostCardProps) {
+export function PostCard({
+  post,
+  currentUserId,
+  onDelete,
+  onViewProfile,
+}: PostCardProps) {
   const [liked, setLiked] = useState(post.liked_by_user);
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [commentsCount, setCommentsCount] = useState(post.comments_count);

@@ -1,9 +1,15 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "react-aria-components";
 import { haptic } from "@/lib/haptics";
-import { getUserProfile, getUserPosts, followUser, unfollowUser } from "@/lib/db";
+import {
+  getUserProfile,
+  getUserPosts,
+  followUser,
+  unfollowUser,
+} from "@/lib/db";
 import { PostCard, type Post } from "./post-card";
 import { StatBadge } from "./stat-badge";
 
@@ -66,7 +72,7 @@ export function UserProfile({
               is_following: !p.is_following,
               followers_count: p.followers_count + (p.is_following ? -1 : 1),
             }
-          : p
+          : p,
       );
     } catch {}
     setFollowLoading(false);
@@ -118,6 +124,7 @@ export function UserProfile({
       <section className="px-4 pt-4 pb-5 border-b border-border">
         <div className="flex items-center gap-4 mb-5">
           {profile.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={profile.avatar_url}
               alt={profile.display_name}
@@ -130,7 +137,7 @@ export function UserProfile({
           )}
 
           <div className="flex-1">
-            <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight mb-3">
+            <h2 className="font-display text-2xl font-bold tracking-tight mb-3">
               {profile.display_name}
             </h2>
 
@@ -186,9 +193,7 @@ export function UserProfile({
         {posts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <span className="text-3xl">🎵</span>
-            <p className="text-sm text-muted-foreground">
-              No posts yet
-            </p>
+            <p className="text-sm text-muted-foreground">No posts yet</p>
           </div>
         ) : (
           posts.map((post) => (

@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 interface ArtistCardProps {
@@ -49,7 +50,7 @@ export function ArtistCard({ rank, name, genres, imageUrl }: ArtistCardProps) {
           <img
             src={imageUrl}
             alt={name}
-            className="w-full h-full object-cover grayscale-[50%] group-hover:grayscale-0 transition-all"
+            className="w-full h-full object-cover grayscale-50 group-hover:grayscale-0 transition-all"
           />
         ) : (
           <div className="w-full h-full bg-muted flex items-center justify-center text-2xl">

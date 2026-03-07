@@ -8,7 +8,7 @@ import type { z } from "zod/v4";
  */
 export async function parseBody<T extends z.ZodType>(
   request: NextRequest,
-  schema: T
+  schema: T,
 ): Promise<z.infer<T> | NextResponse> {
   let raw: unknown;
   try {
@@ -22,7 +22,7 @@ export async function parseBody<T extends z.ZodType>(
     const messages = result.error.issues.map((i) => i.message);
     return NextResponse.json(
       { error: "Validation failed", details: messages },
-      { status: 400 }
+      { status: 400 },
     );
   }
   return result.data;
@@ -33,7 +33,7 @@ export async function parseBody<T extends z.ZodType>(
  */
 export function parseQuery<T extends z.ZodType>(
   request: NextRequest,
-  schema: T
+  schema: T,
 ): z.infer<T> | NextResponse {
   const raw = Object.fromEntries(request.nextUrl.searchParams.entries());
   const result = schema.safeParse(raw);
@@ -41,7 +41,7 @@ export function parseQuery<T extends z.ZodType>(
     const messages = result.error.issues.map((i) => i.message);
     return NextResponse.json(
       { error: "Invalid query params", details: messages },
-      { status: 400 }
+      { status: 400 },
     );
   }
   return result.data;
@@ -77,7 +77,8 @@ export async function requireAuth() {
 /**
  * Validate a UUID path param. Returns the id or a 400 response.
  */
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function validateId(id: string): string | NextResponse {
   if (!UUID_RE.test(id)) {

@@ -1,3 +1,4 @@
+/* eslint-disable prefer-const */
 import { NextRequest, NextResponse } from "next/server";
 import {
   getTopArtists,
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
   if (!profile?.spotify_token) {
     return NextResponse.json(
       { error: "No Spotify token found" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -37,6 +38,7 @@ export async function GET(request: NextRequest) {
   try {
     const data = await fetcher(access_token, query.time_range);
     return NextResponse.json(data);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     if (e.message === "token_expired" && refresh_token) {
       const refreshed = await refreshSpotifyToken(refresh_token);

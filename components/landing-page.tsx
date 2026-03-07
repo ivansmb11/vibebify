@@ -47,7 +47,7 @@ export function LandingPage() {
                 Beta
               </span>
             </div>
-            <h1 className="font-[family-name:var(--font-display)] text-6xl sm:text-7xl font-bold tracking-tighter leading-none glitch-text">
+            <h1 className="font-display text-6xl sm:text-7xl font-bold tracking-tighter leading-none glitch-text">
               VIBE
               <br />
               <span className="text-punk-pink">BIFY</span>
@@ -56,8 +56,9 @@ export function LandingPage() {
 
           {/* Tagline */}
           <p className="text-muted-foreground text-sm leading-relaxed mb-2 max-w-xs">
-            Discover your <span className="text-punk-yellow font-bold">music DNA</span>.
-            See what you actually listen to — not what you tell people you do.
+            Discover your{" "}
+            <span className="text-punk-yellow font-bold">music DNA</span>. See
+            what you actually listen to — not what you tell people you do.
           </p>
 
           <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] mb-8">

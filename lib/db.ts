@@ -16,7 +16,7 @@ async function getUserId(): Promise<string> {
 
 async function enrichPostsWithLikes(
   posts: Post[],
-  userId: string
+  userId: string,
 ): Promise<Post[]> {
   if (posts.length === 0) return posts;
   const postIds = posts.map((p) => p.id);
@@ -64,9 +64,7 @@ export async function getFeed(cursor?: string) {
   return {
     posts: enriched,
     next_cursor:
-      posts && posts.length === 20
-        ? posts[posts.length - 1].created_at
-        : null,
+      posts && posts.length === 20 ? posts[posts.length - 1].created_at : null,
   };
 }
 
@@ -92,9 +90,7 @@ export async function getDiscover(cursor?: string) {
   return {
     posts: enriched,
     next_cursor:
-      posts && posts.length === 20
-        ? posts[posts.length - 1].created_at
-        : null,
+      posts && posts.length === 20 ? posts[posts.length - 1].created_at : null,
   };
 }
 
@@ -281,9 +277,7 @@ export async function getUserPosts(targetId: string, cursor?: string) {
   return {
     posts: enriched,
     next_cursor:
-      posts && posts.length === 20
-        ? posts[posts.length - 1].created_at
-        : null,
+      posts && posts.length === 20 ? posts[posts.length - 1].created_at : null,
   };
 }
 
@@ -303,7 +297,9 @@ export async function getStreak(userId: string) {
 
 // ─── Duels ───
 
-export async function getDuels(filter: "open" | "active" | "mine" | "all" = "all") {
+export async function getDuels(
+  filter: "open" | "active" | "mine" | "all" = "all",
+) {
   const userId = await getUserId();
 
   let query = supabase
@@ -311,7 +307,7 @@ export async function getDuels(filter: "open" | "active" | "mine" | "all" = "all
     .select(
       `*,
       creator:profiles!duels_creator_id_fkey(id, display_name, avatar_url),
-      opponent:profiles!duels_opponent_id_fkey(id, display_name, avatar_url)`
+      opponent:profiles!duels_opponent_id_fkey(id, display_name, avatar_url)`,
     )
     .order("created_at", { ascending: false })
     .limit(20);
@@ -372,7 +368,7 @@ export async function createDuel(payload: {
     .select(
       `*,
       creator:profiles!duels_creator_id_fkey(id, display_name, avatar_url),
-      opponent:profiles!duels_opponent_id_fkey(id, display_name, avatar_url)`
+      opponent:profiles!duels_opponent_id_fkey(id, display_name, avatar_url)`,
     )
     .single();
 
@@ -387,7 +383,7 @@ export async function acceptDuel(
     artist: string;
     image_url?: string;
     spotify_track_id?: string;
-  }
+  },
 ) {
   const userId = await getUserId();
   const { data, error } = await supabase.rpc("accept_duel", {
@@ -402,7 +398,10 @@ export async function acceptDuel(
   return data as Duel;
 }
 
-export async function voteDuel(duelId: string, votedFor: "creator" | "opponent") {
+export async function voteDuel(
+  duelId: string,
+  votedFor: "creator" | "opponent",
+) {
   const userId = await getUserId();
   const { error } = await supabase
     .from("duel_votes")

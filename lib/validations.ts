@@ -13,7 +13,10 @@ export const cursor = z.iso.datetime().optional();
 // ─── Posts ───
 
 export const createPostSchema = z.object({
-  content: z.string().min(1, "Content is required").max(500, "Content too long (max 500)"),
+  content: z
+    .string()
+    .min(1, "Content is required")
+    .max(500, "Content too long (max 500)"),
   song_title: z.string().min(1, "Song title is required").max(300),
   song_artist: z.string().min(1, "Song artist is required").max(300),
   song_album: z.string().max(300).optional(),
@@ -25,7 +28,10 @@ export const createPostSchema = z.object({
 // ─── Comments ───
 
 export const createCommentSchema = z.object({
-  content: z.string().min(1, "Content is required").max(300, "Comment too long (max 300)"),
+  content: z
+    .string()
+    .min(1, "Content is required")
+    .max(300, "Comment too long (max 300)"),
 });
 
 // ─── Follow ───
@@ -59,7 +65,9 @@ export const voteDuelSchema = z.object({
 
 export const spotifyTopQuerySchema = z.object({
   type: z.enum(["artists", "tracks"]).default("artists"),
-  time_range: z.enum(["short_term", "medium_term", "long_term"]).default("medium_term"),
+  time_range: z
+    .enum(["short_term", "medium_term", "long_term"])
+    .default("medium_term"),
 });
 
 // ─── Search ───

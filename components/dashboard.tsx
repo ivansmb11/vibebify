@@ -15,7 +15,7 @@ import { ComposePost } from "./compose-post";
 import { UserSearch } from "./user-search";
 import { UserProfile } from "./user-profile";
 import { haptic } from "@/lib/haptics";
-import { getFeed, getDiscover, getStreak, getDuels, voteDuel } from "@/lib/db";
+import { getFeed, getDiscover, getStreak, getDuels } from "@/lib/db";
 import { StreakBadge } from "./streak-badge";
 import { GenreDnaCard } from "./genre-dna-card";
 import { DuelCard, type Duel } from "./duel-card";
@@ -145,7 +145,9 @@ export function Dashboard({ user }: DashboardProps) {
 
   const fetchDnaData = useCallback(async () => {
     try {
-      const res = await fetch("/api/spotify/top?type=artists&time_range=medium_term");
+      const res = await fetch(
+        "/api/spotify/top?type=artists&time_range=medium_term",
+      );
       if (res.ok) {
         const data = await res.json();
         setDnaArtists(data.items ?? []);
@@ -160,7 +162,14 @@ export function Dashboard({ user }: DashboardProps) {
     fetchStreak();
     fetchDuels();
     fetchDnaData();
-  }, [fetchSpotifyData, fetchFeed, fetchDiscover, fetchStreak, fetchDuels, fetchDnaData]);
+  }, [
+    fetchSpotifyData,
+    fetchFeed,
+    fetchDiscover,
+    fetchStreak,
+    fetchDuels,
+    fetchDnaData,
+  ]);
 
   const displayName =
     user.user_metadata?.full_name ?? user.user_metadata?.name ?? "You";

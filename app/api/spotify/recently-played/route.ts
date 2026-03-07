@@ -1,3 +1,4 @@
+/* eslint-disable prefer-const */
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getRecentlyPlayed, refreshSpotifyToken } from "@/lib/spotify";
@@ -21,7 +22,7 @@ export async function GET() {
   if (!profile?.spotify_token) {
     return NextResponse.json(
       { error: "No Spotify token found" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -33,6 +34,7 @@ export async function GET() {
   try {
     const data = await getRecentlyPlayed(access_token);
     return NextResponse.json(data);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     if (e.message === "token_expired" && refresh_token) {
       const refreshed = await refreshSpotifyToken(refresh_token);

@@ -15,7 +15,7 @@ export function SectionHeader({
     <div className="flex items-center gap-3 mb-4">
       <div className={`w-1.5 h-8 ${accent} -skew-x-12`} />
       <div>
-        <h2 className="font-[family-name:var(--font-display)] text-xl font-bold uppercase tracking-tight">
+        <h2 className="font-display text-xl font-bold uppercase tracking-tight">
           {title}
         </h2>
         {subtitle && (

@@ -3,7 +3,7 @@ const TOKEN_URL = "https://accounts.spotify.com/api/token";
 
 export async function refreshSpotifyToken(refreshToken: string) {
   const basic = Buffer.from(
-    `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`
+    `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`,
   ).toString("base64");
 
   const res = await fetch(TOKEN_URL, {
@@ -24,7 +24,7 @@ export async function refreshSpotifyToken(refreshToken: string) {
 export async function spotifyFetch(
   endpoint: string,
   accessToken: string,
-  params?: Record<string, string>
+  params?: Record<string, string>,
 ) {
   const url = new URL(`${SPOTIFY_API}${endpoint}`);
   if (params) {
@@ -55,7 +55,7 @@ export async function getRecentlyPlayed(token: string, limit = 20) {
 export async function getTopArtists(
   token: string,
   timeRange = "medium_term",
-  limit = 20
+  limit = 20,
 ) {
   return spotifyFetch("/me/top/artists", token, {
     time_range: timeRange,
@@ -66,7 +66,7 @@ export async function getTopArtists(
 export async function getTopTracks(
   token: string,
   timeRange = "medium_term",
-  limit = 20
+  limit = 20,
 ) {
   return spotifyFetch("/me/top/tracks", token, {
     time_range: timeRange,
@@ -77,7 +77,7 @@ export async function getTopTracks(
 export async function getRecommendations(
   token: string,
   seedArtists: string[],
-  limit = 20
+  limit = 20,
 ) {
   return spotifyFetch("/recommendations", token, {
     seed_artists: seedArtists.slice(0, 5).join(","),

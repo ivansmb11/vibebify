@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useCallback, useRef } from "react";
@@ -49,8 +50,8 @@ export function UserSearch({ onSelectUser }: UserSearchProps) {
       else await followUser(userId);
       setResults((prev) =>
         prev.map((u) =>
-          u.id === userId ? { ...u, is_following: !isFollowing } : u
-        )
+          u.id === userId ? { ...u, is_following: !isFollowing } : u,
+        ),
       );
     } catch {}
     setFollowLoading(null);
